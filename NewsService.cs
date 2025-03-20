@@ -500,11 +500,13 @@ namespace Upr_2
                             height: 100%;
                             position: relative;
                             overflow: hidden;
+                            border: 1px solid rgba(255, 255, 255, 0.1);
                         }
 
                         .article:hover {
                             transform: translateY(-5px);
                             box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+                            border-color: var(--accent-color);
                         }
 
                         .article::before {
@@ -523,32 +525,64 @@ namespace Upr_2
                             opacity: 1;
                         }
 
+                        .article.is-favorite {
+                            background: linear-gradient(145deg, var(--card-bg), rgba(52, 152, 219, 0.1));
+                            border-color: var(--favorite-color);
+                        }
+
+                        .article.is-favorite::after {
+                            content: '';
+                            position: absolute;
+                            top: 0;
+                            right: 0;
+                            width: 50px;
+                            height: 50px;
+                            background: linear-gradient(135deg, var(--favorite-color) 50%, transparent 50%);
+                            opacity: 0.2;
+                        }
+
                         .title { 
                             color: var(--text-primary);
                             font-size: 1.4em;
                             font-weight: bold;
                             margin-bottom: 15px;
                             line-height: 1.4;
+                            padding: 10px;
+                            border-radius: 8px;
+                            background-color: rgba(0, 0, 0, 0.1);
+                            border-left: 4px solid var(--accent-color);
                         }
 
                         .metadata {
                             display: flex;
                             flex-wrap: wrap;
-                            gap: 10px;
-                            margin: 10px 0;
-                            font-size: 0.9em;
-                            color: var(--text-secondary);
+                            gap: 12px;
+                            margin: 15px 0;
+                            padding: 10px;
+                            background-color: rgba(0, 0, 0, 0.05);
+                            border-radius: 8px;
                         }
 
                         .metadata-item {
                             display: flex;
                             align-items: center;
-                            gap: 5px;
+                            gap: 6px;
+                            padding: 4px 10px;
+                            background-color: rgba(255, 255, 255, 0.1);
+                            border-radius: 15px;
+                            font-size: 0.9em;
+                        }
+
+                        .metadata-item .emoji {
+                            font-size: 1.2em;
                         }
 
                         .url-container {
                             margin-top: auto;
                             padding-top: 15px;
+                            border-top: 1px solid rgba(255, 255, 255, 0.1);
+                            display: flex;
+                            justify-content: center;
                         }
 
                         .url-button {
@@ -557,16 +591,21 @@ namespace Upr_2
                             gap: 8px;
                             background-color: var(--accent-color);
                             color: white;
-                            padding: 8px 15px;
+                            padding: 10px 20px;
                             border-radius: 20px;
                             text-decoration: none;
                             transition: all 0.3s ease;
-                            font-size: 0.9em;
+                            font-size: 0.95em;
+                            width: auto;
+                            min-width: 200px;
+                            justify-content: center;
+                            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
                         }
 
                         .url-button:hover {
                             background-color: #2980b9;
                             transform: translateY(-2px);
+                            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
                         }
 
                         .favorite-indicator {
@@ -577,10 +616,19 @@ namespace Upr_2
                             color: var(--favorite-color);
                             opacity: 0.5;
                             transition: all 0.3s ease;
+                            z-index: 1;
+                            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
                         }
 
                         .article.is-favorite .favorite-indicator {
                             opacity: 1;
+                            animation: pulse 2s infinite;
+                        }
+
+                        @keyframes pulse {
+                            0% { transform: scale(1); }
+                            50% { transform: scale(1.1); }
+                            100% { transform: scale(1); }
                         }
 
                         @media (max-width: 768px) {
