@@ -279,27 +279,44 @@ namespace Upr_2
                         url = "https://www.mediapool.bg" + (url.StartsWith("/") ? url : "/" + url);
                     }
 
+                    // Extract the time from the dateTimeNode if available
                     string dateTime = dateTimeNode?.InnerText?.Trim() ??
                                     DateTime.Now.ToString("yyyy-MM-dd HH:mm");
 
-                    // Extract author if present (usually after the last space followed by timestamp)
-                    string? author = null;
-                    var authorMatch = System.Text.RegularExpressions.Regex.Match(title, @"(?:\s+|^)([А-Я][а-я]+(?:\s+[А-Я][а-я]+)+)(?:\s+Вчера\s+\d{2}:\d{2}|\s+\d{2}\.\d{2}\.\d{4}\s+\d{2}:\d{2}|\s+\d{2}:\d{2})?$");
-                    if (authorMatch.Success)
-                    {
-                        author = authorMatch.Groups[1].Value.Trim();
-                        title = title.Substring(0, title.Length - authorMatch.Value.Length).Trim();
-                    }
-
-                    // Remove timestamp patterns from title
-                    var timestampPatterns = new[] {
-                        @"\s+Вчера\s+\d{2}:\d{2}$",
-                        @"\s+\d{2}\.\d{2}\.\d{4}\s+\d{2}:\d{2}$",
-                        @"\s+\d{2}:\d{2}$"
+                    // Clean the title by removing timestamps and date patterns
+                    var cleaningPatterns = new[] {
+                        @"\s+Вчера\s+\d{1,2}:\d{2}(?:\s+|$)",  // "Вчера 18:45" with optional space after
+                        @"\s+\d{1,2}:\d{2}(?:\s+|$)",  // "18:45" with optional space after
+                        @"\s+\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2}(?:\s+|$)",  // "25.02.2024 18:45"
+                        @"\s+Вчера(?:\s+|$)",  // standalone "Вчера"
+                        @"\s+днес(?:\s+|$)",  // standalone "днес"
+                        @"\s+\d{1,2}\s+(?:януари|февруари|март|април|май|юни|юли|август|септември|октомври|ноември|декември)\s+\d{4}(?:\s+|$)"  // date in Bulgarian
                     };
-                    foreach (var pattern in timestampPatterns)
+
+                    // Apply cleaning patterns until no more changes occur
+                    string previousTitle;
+                    do
                     {
-                        title = System.Text.RegularExpressions.Regex.Replace(title, pattern, "");
+                        previousTitle = title;
+                        foreach (var pattern in cleaningPatterns)
+                        {
+                            title = System.Text.RegularExpressions.Regex.Replace(title, pattern, " ", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                        }
+                        title = title.Trim();
+                    } while (title != previousTitle);
+
+                    // Extract author only if it matches a strict pattern
+                    string? author = null;
+                    var authorMatch = System.Text.RegularExpressions.Regex.Match(title, @"(?:\s+|^)([А-Я][а-я]+\s+[А-Я][а-я]+(?:\s+[А-Я][а-я]+)*)\s*$");
+                    if (authorMatch.Success && title.Count(c => char.IsUpper(c)) >= 4)
+                    {
+                        var potentialAuthor = authorMatch.Groups[1].Value.Trim();
+                        if (potentialAuthor.Split(' ').Length >= 2 &&
+                            potentialAuthor.Split(' ').All(word => char.IsUpper(word[0]) && word.Skip(1).All(c => char.IsLower(c))))
+                        {
+                            author = potentialAuthor;
+                            title = title.Substring(0, title.Length - authorMatch.Value.Length).Trim();
+                        }
                     }
 
                     if (!ContainsCovid19Keywords(title))
@@ -359,6 +376,14 @@ namespace Upr_2
                             --favorite-color: #f1c40f;
                             --category-color: #e74c3c;
                         }
+
+                        :root[data-theme='light'] {
+                            --bg-color: #f5f5f5;
+                            --card-bg: #ffffff;
+                            --text-primary: #333333;
+                            --text-secondary: #666666;
+                            --accent-color: #2980b9;
+                        }
                         
                         body { 
                             font-family: 'Segoe UI', Arial, sans-serif;
@@ -367,6 +392,7 @@ namespace Upr_2
                             margin: 0;
                             padding: 20px;
                             line-height: 1.6;
+                            transition: background-color 0.3s ease, color 0.3s ease;
                         }
 
                         .container {
@@ -379,6 +405,11 @@ namespace Upr_2
                             margin-bottom: 30px;
                             padding: 20px;
                             border-bottom: 1px solid #444;
+                            position: sticky;
+                            top: 0;
+                            background-color: var(--bg-color);
+                            z-index: 100;
+                            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
                         }
 
                         .header h1 {
@@ -387,18 +418,109 @@ namespace Upr_2
                             font-size: 2.5em;
                         }
 
-                        .article { 
+                        .controls {
+                            display: flex;
+                            justify-content: center;
+                            gap: 20px;
                             margin: 20px 0;
+                            flex-wrap: wrap;
+                        }
+
+                        .search-box {
+                            padding: 10px 15px;
+                            border: 2px solid var(--accent-color);
+                            border-radius: 25px;
+                            width: 300px;
+                            background-color: var(--card-bg);
+                            color: var(--text-primary);
+                            font-size: 16px;
+                            transition: all 0.3s ease;
+                        }
+
+                        .search-box:focus {
+                            outline: none;
+                            box-shadow: 0 0 10px rgba(52, 152, 219, 0.3);
+                        }
+
+                        .theme-toggle {
+                            background-color: var(--accent-color);
+                            color: white;
+                            border: none;
+                            padding: 10px 20px;
+                            border-radius: 25px;
+                            cursor: pointer;
+                            font-size: 16px;
+                            transition: all 0.3s ease;
+                        }
+
+                        .theme-toggle:hover {
+                            transform: translateY(-2px);
+                            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+                        }
+
+                        .category-filters {
+                            display: flex;
+                            gap: 10px;
+                            flex-wrap: wrap;
+                            justify-content: center;
+                            margin: 20px 0;
+                        }
+
+                        .category-filter {
+                            background-color: var(--card-bg);
+                            color: var(--text-primary);
+                            border: 2px solid var(--accent-color);
+                            padding: 8px 15px;
+                            border-radius: 20px;
+                            cursor: pointer;
+                            transition: all 0.3s ease;
+                        }
+
+                        .category-filter.active {
+                            background-color: var(--accent-color);
+                            color: white;
+                        }
+
+                        .articles-grid {
+                            display: grid;
+                            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                            gap: 20px;
+                            margin-top: 30px;
+                        }
+
+                        .article { 
+                            margin: 0;
                             padding: 20px;
                             background-color: var(--card-bg);
-                            border-radius: 10px;
-                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-                            transition: transform 0.2s ease, box-shadow 0.2s ease;
+                            border-radius: 15px;
+                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                            transition: all 0.3s ease;
+                            display: flex;
+                            flex-direction: column;
+                            height: 100%;
+                            position: relative;
+                            overflow: hidden;
                         }
 
                         .article:hover {
                             transform: translateY(-5px);
-                            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+                            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+                        }
+
+                        .article::before {
+                            content: '';
+                            position: absolute;
+                            top: 0;
+                            left: 0;
+                            width: 100%;
+                            height: 4px;
+                            background: linear-gradient(90deg, var(--accent-color), var(--category-color));
+                            opacity: 0;
+                            transition: opacity 0.3s ease;
+                        }
+
+                        .article:hover::before {
+                            opacity: 1;
                         }
 
                         .title { 
@@ -409,101 +531,229 @@ namespace Upr_2
                             line-height: 1.4;
                         }
 
-                        .datetime { 
-                            color: var(--text-secondary);
+                        .metadata {
+                            display: flex;
+                            flex-wrap: wrap;
+                            gap: 10px;
+                            margin: 10px 0;
                             font-size: 0.9em;
-                            margin: 10px 0;
-                        }
-
-                        .author { 
                             color: var(--text-secondary);
-                            font-size: 0.9em;
-                            margin: 10px 0;
                         }
 
-                        .category { 
-                            color: var(--category-color);
-                            font-size: 0.95em;
-                            margin: 10px 0;
+                        .metadata-item {
+                            display: flex;
+                            align-items: center;
+                            gap: 5px;
                         }
 
-                        .favorite { 
-                            color: var(--favorite-color);
-                            font-size: 0.95em;
-                            margin: 10px 0;
+                        .url-container {
+                            margin-top: auto;
+                            padding-top: 15px;
                         }
 
-                        .url { 
-                            margin: 15px 0 5px 0;
-                        }
-
-                        .url a {
-                            color: var(--accent-color);
+                        .url-button {
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 8px;
+                            background-color: var(--accent-color);
+                            color: white;
+                            padding: 8px 15px;
+                            border-radius: 20px;
                             text-decoration: none;
-                            transition: color 0.2s ease;
-                            word-break: break-all;
+                            transition: all 0.3s ease;
+                            font-size: 0.9em;
                         }
 
-                        .url a:hover {
-                            color: #2980b9;
-                            text-decoration: underline;
+                        .url-button:hover {
+                            background-color: #2980b9;
+                            transform: translateY(-2px);
                         }
 
-                        .emoji {
-                            font-size: 1.2em;
-                            margin-right: 8px;
+                        .favorite-indicator {
+                            position: absolute;
+                            top: 15px;
+                            right: 15px;
+                            font-size: 1.5em;
+                            color: var(--favorite-color);
+                            opacity: 0.5;
+                            transition: all 0.3s ease;
+                        }
+
+                        .article.is-favorite .favorite-indicator {
+                            opacity: 1;
                         }
 
                         @media (max-width: 768px) {
                             body {
                                 padding: 10px;
                             }
-                            .article {
-                                margin: 15px 0;
-                                padding: 15px;
+                            .header h1 {
+                                font-size: 2em;
                             }
-                            .title {
-                                font-size: 1.2em;
+                            .search-box {
+                                width: 100%;
+                                max-width: 300px;
                             }
+                            .articles-grid {
+                                grid-template-columns: 1fr;
+                            }
+                        }
+
+                        .loading {
+                            display: none;
+                            justify-content: center;
+                            align-items: center;
+                            margin: 20px 0;
+                        }
+
+                        .loading.active {
+                            display: flex;
+                        }
+
+                        .loading-spinner {
+                            width: 40px;
+                            height: 40px;
+                            border: 4px solid var(--accent-color);
+                            border-top: 4px solid transparent;
+                            border-radius: 50%;
+                            animation: spin 1s linear infinite;
+                        }
+
+                        @keyframes spin {
+                            0% { transform: rotate(0deg); }
+                            100% { transform: rotate(360deg); }
+                        }
+
+                        .no-results {
+                            text-align: center;
+                            padding: 40px;
+                            color: var(--text-secondary);
+                            font-size: 1.2em;
+                            display: none;
                         }
                     ");
                     await writer.WriteLineAsync("</style>");
+                    await writer.WriteLineAsync(@"
+                        <script>
+                            document.addEventListener('DOMContentLoaded', function() {
+                                // Theme toggle
+                                const themeToggle = document.getElementById('theme-toggle');
+                                const root = document.documentElement;
+
+                                themeToggle.addEventListener('click', () => {
+                                    const currentTheme = root.getAttribute('data-theme');
+                                    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                                    root.setAttribute('data-theme', newTheme);
+                                    themeToggle.textContent = `Switch to ${currentTheme === 'light' ? 'Light' : 'Dark'} Theme`;
+                                });
+
+                                // Search functionality
+                                const searchBox = document.getElementById('search');
+                                const articles = document.querySelectorAll('.article');
+                                const noResults = document.querySelector('.no-results');
+
+                                searchBox.addEventListener('input', filterArticles);
+
+                                // Category filters
+                                const categoryFilters = document.querySelectorAll('.category-filter');
+                                let activeCategory = 'all';
+
+                                categoryFilters.forEach(filter => {
+                                    filter.addEventListener('click', () => {
+                                        categoryFilters.forEach(f => f.classList.remove('active'));
+                                        filter.classList.add('active');
+                                        activeCategory = filter.dataset.category;
+                                        filterArticles();
+                                    });
+                                });
+
+                                function filterArticles() {
+                                    const searchTerm = searchBox.value.toLowerCase();
+                                    let visibleCount = 0;
+
+                                    articles.forEach(article => {
+                                        const title = article.querySelector('.title').textContent.toLowerCase();
+                                        const category = article.dataset.category.toLowerCase();
+                                        const matchesSearch = title.includes(searchTerm);
+                                        const matchesCategory = activeCategory === 'all' || category === activeCategory.toLowerCase();
+
+                                        if (matchesSearch && matchesCategory) {
+                                            article.style.display = 'flex';
+                                            visibleCount++;
+                                        } else {
+                                            article.style.display = 'none';
+                                        }
+                                    });
+
+                                    noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+                                }
+                            });
+                        </script>
+                    ");
                     await writer.WriteLineAsync("</head><body>");
                     await writer.WriteLineAsync("<div class='container'>");
 
-                    // Add header with current date
+                    // Add header with current date and controls
                     await writer.WriteLineAsync("<div class='header'>");
                     await writer.WriteLineAsync($"<h1>📰 Новини от Mediapool</h1>");
                     await writer.WriteLineAsync($"<div class='datetime'>Извлечено на: {DateTime.Now:dd MMMM yyyy}</div>");
+
+                    // Add controls
+                    await writer.WriteLineAsync("<div class='controls'>");
+                    await writer.WriteLineAsync("<input type='text' id='search' class='search-box' placeholder='Търсене на новини...'>");
+                    await writer.WriteLineAsync("<button id='theme-toggle' class='theme-toggle'>Switch to Light Theme</button>");
                     await writer.WriteLineAsync("</div>");
+
+                    // Add category filters
+                    await writer.WriteLineAsync("<div class='category-filters'>");
+                    await writer.WriteLineAsync("<button class='category-filter active' data-category='all'>Всички</button>");
+                    var uniqueCategories = articles.Select(a => a.Category).Distinct().OrderBy(c => c);
+                    foreach (var category in uniqueCategories)
+                    {
+                        var emoji = articles.First(a => a.Category == category).CategoryEmoji;
+                        await writer.WriteLineAsync($"<button class='category-filter' data-category='{category}'>{emoji} {category}</button>");
+                    }
+                    await writer.WriteLineAsync("</div>");
+                    await writer.WriteLineAsync("</div>");
+
+                    // Add loading indicator
+                    await writer.WriteLineAsync("<div class='loading'><div class='loading-spinner'></div></div>");
+
+                    // Add no results message
+                    await writer.WriteLineAsync("<div class='no-results'>Няма намерени новини</div>");
+
+                    // Add articles grid
+                    await writer.WriteLineAsync("<div class='articles-grid'>");
 
                     foreach (var article in articles)
                     {
-                        await writer.WriteLineAsync("<div class='article'>");
+                        await writer.WriteLineAsync($"<div class='article {(article.IsFavorite ? "is-favorite" : "")}' data-category='{article.Category}'>");
+
+                        // Favorite indicator
+                        await writer.WriteLineAsync("<div class='favorite-indicator'>★</div>");
 
                         // Title with category emoji
                         await writer.WriteLineAsync($"<div class='title'><span class='emoji'>{article.CategoryEmoji}</span>{HttpUtility.HtmlEncode(article.Title)}</div>");
 
-                        // Date only
-                        await writer.WriteLineAsync($"<div class='datetime'><span class='emoji'>📅</span>{article.FormattedDate}</div>");
-
-                        // Author if present
+                        // Metadata section
+                        await writer.WriteLineAsync("<div class='metadata'>");
+                        await writer.WriteLineAsync($"<div class='metadata-item'><span class='emoji'>📅</span>{article.FormattedDate}</div>");
+                        await writer.WriteLineAsync($"<div class='metadata-item'><span class='emoji'>📌</span>{article.Category}</div>");
                         if (!string.IsNullOrEmpty(article.Author))
                         {
-                            await writer.WriteLineAsync($"<div class='author'><span class='emoji'>✍️</span>Автор: {HttpUtility.HtmlEncode(article.Author)}</div>");
+                            await writer.WriteLineAsync($"<div class='metadata-item'><span class='emoji'>✍️</span>{HttpUtility.HtmlEncode(article.Author)}</div>");
                         }
+                        await writer.WriteLineAsync("</div>");
 
-                        // Category
-                        await writer.WriteLineAsync($"<div class='category'><span class='emoji'>📌</span>Категория: {article.Category}</div>");
-
-                        // Favorite status
-                        await writer.WriteLineAsync($"<div class='favorite'><span class='emoji'>★</span>{(article.IsFavorite ? "Любима" : "Не е любима")}</div>");
-
-                        // URL
-                        await writer.WriteLineAsync($"<div class='url'><span class='emoji'>🔗</span><a href='{article.Url}' target='_blank'>{article.Url}</a></div>");
+                        // URL button
+                        await writer.WriteLineAsync("<div class='url-container'>");
+                        await writer.WriteLineAsync($"<a href='{article.Url}' target='_blank' class='url-button'><span class='emoji'>🔗</span>Прочети повече</a>");
+                        await writer.WriteLineAsync("</div>");
 
                         await writer.WriteLineAsync("</div>");
                     }
+
+                    await writer.WriteLineAsync("</div>"); // Close articles-grid
 
                     await writer.WriteLineAsync("</div></body></html>");
                 }
