@@ -351,20 +351,42 @@ namespace Upr_2
 
                         .header {
                             text-align: center;
-                            margin-bottom: 30px;
                             padding: 20px;
-                            border-bottom: 1px solid #444;
+                            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
                             position: sticky;
                             top: 0;
                             background-color: var(--bg-color);
                             z-index: 100;
                             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                            transition: all 0.3s ease;
+                        }
+
+                        .header.scrolled {
+                            padding: 10px;
                         }
 
                         .header h1 {
                             margin: 0;
                             color: var(--text-primary);
                             font-size: 2.5em;
+                            transition: all 0.3s ease;
+                        }
+
+                        .datetime {
+                            margin-top: 10px;
+                            transition: all 0.3s ease;
+                        }
+
+                        .collapsible-content {
+                            transition: all 0.3s ease;
+                            overflow: hidden;
+                        }
+
+                        .header.scrolled .collapsible-content {
+                            height: 0;
+                            opacity: 0;
+                            margin: 0;
+                            padding: 0;
                         }
 
                         .controls {
@@ -373,6 +395,17 @@ namespace Upr_2
                             gap: 20px;
                             margin: 20px 0;
                             flex-wrap: wrap;
+                            transition: all 0.3s ease;
+                        }
+
+                        .header.scrolled .controls {
+                            margin: 0;
+                        }
+
+                        .search-container {
+                            position: relative;
+                            z-index: 101;
+                            transition: all 0.3s ease;
                         }
 
                         .search-box {
@@ -389,6 +422,13 @@ namespace Upr_2
                         .search-box:focus {
                             outline: none;
                             box-shadow: 0 0 10px rgba(52, 152, 219, 0.3);
+                            border-color: var(--accent-color);
+                        }
+
+                        .header.scrolled .search-box {
+                            width: 200px;
+                            padding: 8px 12px;
+                            font-size: 14px;
                         }
 
                         .theme-toggle {
@@ -432,29 +472,32 @@ namespace Upr_2
 
                         .articles-grid {
                             display: grid;
-                            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-                            gap: 20px;
-                            margin-top: 30px;
+                            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+                            gap: 30px;
+                            margin-top: 40px;
+                            padding: 20px;
                         }
 
                         .article { 
                             margin: 0;
-                            padding: 20px;
+                            padding: 25px;
                             background-color: var(--card-bg);
-                            border-radius: 15px;
-                            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                            transition: all 0.3s ease;
+                            border-radius: 20px;
+                            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+                            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
                             display: flex;
                             flex-direction: column;
                             height: 100%;
                             position: relative;
                             overflow: hidden;
                             border: 1px solid rgba(255, 255, 255, 0.1);
+                            backdrop-filter: blur(10px);
+                            -webkit-backdrop-filter: blur(10px);
                         }
 
                         .article:hover {
-                            transform: translateY(-5px);
-                            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+                            transform: translateY(-8px);
+                            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
                             border-color: var(--accent-color);
                         }
 
@@ -467,7 +510,7 @@ namespace Upr_2
                             height: 4px;
                             background: linear-gradient(90deg, var(--accent-color), var(--category-color));
                             opacity: 0;
-                            transition: opacity 0.3s ease;
+                            transition: opacity 0.4s ease;
                         }
 
                         .article:hover::before {
@@ -479,56 +522,51 @@ namespace Upr_2
                             border-color: var(--favorite-color);
                         }
 
-                        .article.is-favorite::after {
-                            content: '';
-                            position: absolute;
-                            top: 0;
-                            right: 0;
-                            width: 50px;
-                            height: 50px;
-                            background: linear-gradient(135deg, var(--favorite-color) 50%, transparent 50%);
-                            opacity: 0.2;
-                        }
-
                         .title { 
                             color: var(--text-primary);
-                            font-size: 1.4em;
-                            font-weight: bold;
-                            margin-bottom: 15px;
-                            line-height: 1.4;
-                            padding: 10px;
-                            border-radius: 8px;
-                            background-color: rgba(0, 0, 0, 0.1);
+                            font-size: 1.5em;
+                            font-weight: 600;
+                            margin-bottom: 20px;
+                            line-height: 1.5;
+                            padding: 15px;
+                            border-radius: 12px;
+                            background-color: rgba(0, 0, 0, 0.05);
                             border-left: 4px solid var(--accent-color);
+                            letter-spacing: -0.02em;
                         }
 
                         .metadata {
                             display: flex;
                             flex-wrap: wrap;
-                            gap: 12px;
-                            margin: 15px 0;
-                            padding: 10px;
-                            background-color: rgba(0, 0, 0, 0.05);
-                            border-radius: 8px;
+                            gap: 15px;
+                            margin: 20px 0;
+                            padding: 15px;
+                            background-color: rgba(0, 0, 0, 0.03);
+                            border-radius: 12px;
+                            backdrop-filter: blur(5px);
+                            -webkit-backdrop-filter: blur(5px);
                         }
 
                         .metadata-item {
                             display: flex;
                             align-items: center;
-                            gap: 6px;
-                            padding: 4px 10px;
+                            gap: 8px;
+                            padding: 6px 12px;
                             background-color: rgba(255, 255, 255, 0.1);
-                            border-radius: 15px;
-                            font-size: 0.9em;
+                            border-radius: 20px;
+                            font-size: 0.95em;
+                            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+                            transition: all 0.3s ease;
                         }
 
-                        .metadata-item .emoji {
-                            font-size: 1.2em;
+                        .metadata-item:hover {
+                            transform: translateY(-2px);
+                            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
                         }
 
                         .url-container {
                             margin-top: auto;
-                            padding-top: 15px;
+                            padding-top: 20px;
                             border-top: 1px solid rgba(255, 255, 255, 0.1);
                             display: flex;
                             justify-content: center;
@@ -537,62 +575,76 @@ namespace Upr_2
                         .url-button {
                             display: inline-flex;
                             align-items: center;
-                            gap: 8px;
+                            gap: 10px;
                             background-color: var(--accent-color);
                             color: white;
-                            padding: 10px 20px;
-                            border-radius: 20px;
+                            padding: 12px 25px;
+                            border-radius: 25px;
                             text-decoration: none;
-                            transition: all 0.3s ease;
-                            font-size: 0.95em;
+                            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                            font-size: 1em;
                             width: auto;
-                            min-width: 200px;
+                            min-width: 220px;
                             justify-content: center;
-                            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+                            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+                            font-weight: 500;
+                            letter-spacing: 0.02em;
                         }
 
                         .url-button:hover {
                             background-color: #2980b9;
-                            transform: translateY(-2px);
-                            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+                            transform: translateY(-3px);
+                            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
                         }
 
                         .favorite-indicator {
                             position: absolute;
-                            top: 15px;
-                            right: 15px;
-                            font-size: 1.5em;
+                            top: 20px;
+                            right: 20px;
+                            font-size: 1.8em;
                             color: var(--favorite-color);
-                            opacity: 0.5;
-                            transition: all 0.3s ease;
+                            opacity: 0.6;
+                            transition: all 0.4s ease;
                             z-index: 1;
                             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+                            transform-origin: center;
                         }
 
                         .article.is-favorite .favorite-indicator {
                             opacity: 1;
-                            animation: pulse 2s infinite;
+                            animation: pulse 2.5s infinite;
                         }
 
                         @keyframes pulse {
                             0% { transform: scale(1); }
-                            50% { transform: scale(1.1); }
+                            50% { transform: scale(1.15); }
                             100% { transform: scale(1); }
                         }
 
                         @media (max-width: 768px) {
-                            body {
-                                padding: 10px;
-                            }
-                            .header h1 {
-                                font-size: 2em;
-                            }
-                            .search-box {
-                                width: 100%;
-                                max-width: 300px;
-                            }
                             .articles-grid {
                                 grid-template-columns: 1fr;
+                                gap: 25px;
+                                padding: 15px;
+                            }
+                            
+                            .article {
+                                padding: 20px;
+                            }
+                            
+                            .title {
+                                font-size: 1.3em;
+                                padding: 12px;
+                            }
+                            
+                            .metadata {
+                                padding: 12px;
+                                gap: 12px;
+                            }
+                            
+                            .url-button {
+                                width: 100%;
+                                padding: 10px 20px;
                             }
                         }
 
@@ -633,6 +685,20 @@ namespace Upr_2
                     await writer.WriteLineAsync(@"
                         <script>
                             document.addEventListener('DOMContentLoaded', function() {
+                                // Header scroll behavior
+                                const header = document.querySelector('.header');
+                                let lastScrollTop = 0;
+                                
+                                window.addEventListener('scroll', () => {
+                                    const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                                    if (scrollTop > 100) {
+                                        header.classList.add('scrolled');
+                                    } else {
+                                        header.classList.remove('scrolled');
+                                    }
+                                    lastScrollTop = scrollTop;
+                                });
+
                                 // Theme toggle
                                 const themeToggle = document.getElementById('theme-toggle');
                                 const root = document.documentElement;
@@ -692,16 +758,23 @@ namespace Upr_2
 
                     // Add header with current date and controls
                     await writer.WriteLineAsync("<div class='header'>");
+                    await writer.WriteLineAsync("<div class='collapsible-content'>");
                     await writer.WriteLineAsync($"<h1>📰 Новини от Mediapool</h1>");
                     await writer.WriteLineAsync($"<div class='datetime'>Извлечено на: {DateTime.Now:dd MMMM yyyy}</div>");
+                    await writer.WriteLineAsync("</div>");
 
                     // Add controls
                     await writer.WriteLineAsync("<div class='controls'>");
+                    await writer.WriteLineAsync("<div class='search-container'>");
                     await writer.WriteLineAsync("<input type='text' id='search' class='search-box' placeholder='Търсене на новини...'>");
+                    await writer.WriteLineAsync("</div>");
+                    await writer.WriteLineAsync("<div class='collapsible-content'>");
                     await writer.WriteLineAsync("<button id='theme-toggle' class='theme-toggle'>Switch to Light Theme</button>");
+                    await writer.WriteLineAsync("</div>");
                     await writer.WriteLineAsync("</div>");
 
                     // Add category filters
+                    await writer.WriteLineAsync("<div class='collapsible-content'>");
                     await writer.WriteLineAsync("<div class='category-filters'>");
                     await writer.WriteLineAsync("<button class='category-filter active' data-category='all'>Всички</button>");
                     var uniqueCategories = articles.Select(a => a.Category).Distinct().OrderBy(c => c);
