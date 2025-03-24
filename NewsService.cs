@@ -23,7 +23,7 @@ namespace Upr_2
         public int WordCount { get; set; }
         public string? Author { get; set; }
 
-        public NewsArticle(string title, string dateTime, string url)
+        public NewsArticle(string title, string dateTime, string url, string category)
         {
             Title = title;
             Url = url;
@@ -44,59 +44,34 @@ namespace Upr_2
             // Calculate word count
             WordCount = title.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
 
-            // Determine category and emoji from URL
-            (Category, CategoryEmoji) = DetermineCategory(url);
+            // Set category and emoji
+            Category = category;
+            CategoryEmoji = GetCategoryEmoji(category);
         }
 
-        private (string category, string emoji) DetermineCategory(string url)
+        private string GetCategoryEmoji(string category)
         {
-            // Convert URL to lower case for case-insensitive matching
-            url = url.ToLower();
-
-            // World news
-            if (url.Contains("/svyat") || url.Contains("/world") || url.Contains("world-") ||
-                url.Contains("-world") || url.Contains("international"))
-                return ("Свят", "🌍");
-
-            // Bulgaria news
-            if (url.Contains("/bulgaria") || url.Contains("bulgaria-") || url.Contains("-bulgaria") ||
-                url.Contains("/bg") || url.Contains("-bg-"))
-                return ("България", "🇧🇬");
-
-            // Sports news
-            if (url.Contains("/sport") || url.Contains("sport-") || url.Contains("-sport") ||
-                url.Contains("football") || url.Contains("olympics"))
-                return ("Спорт", "⚽");
-
-            // Business news
-            if (url.Contains("/business") || url.Contains("business-") || url.Contains("-business") ||
-                url.Contains("economy") || url.Contains("finance") || url.Contains("-byudzhet") ||
-                url.Contains("byudzhet-") || url.Contains("pari"))
-                return ("Бизнес", "💼");
-
-            // Culture news
-            if (url.Contains("/culture") || url.Contains("culture-") || url.Contains("-culture") ||
-                url.Contains("art") || url.Contains("music") || url.Contains("cinema") ||
-                url.Contains("theatre") || url.Contains("kultura"))
-                return ("Култура", "🎭");
-
-            // Politics news
-            if (url.Contains("politik") || url.Contains("parliament") || url.Contains("government") ||
-                url.Contains("election") || url.Contains("-izbor") || url.Contains("izbori-"))
-                return ("Политика", "⚖️");
-
-            // Technology news
-            if (url.Contains("tech") || url.Contains("technology") || url.Contains("digital") ||
-                url.Contains("software") || url.Contains("hardware") || url.Contains("ai"))
-                return ("Технологии", "💻");
-
-            // Health news
-            if (url.Contains("health") || url.Contains("medicine") || url.Contains("covid") ||
-                url.Contains("hospital") || url.Contains("zdrave"))
-                return ("Здраве", "🏥");
-
-            // Default category
-            return ("Други", "📰");
+            return category switch
+            {
+                "България" => "🇧🇬",
+                "Бизнес" => "💼",
+                "Свят" => "🌍",
+                "Общество" => "👥",
+                "Спорт" => "⚽",
+                "Greenpool" => "🌿",
+                "Парламентарни избори" => "🗳️",
+                "Евроизбори 2024" => "🇪🇺",
+                "Война в Украйна" => "⚔️",
+                "Израел срещу Хамас" => "🕊️",
+                "Еврокомпас" => "🧭",
+                "Дело срещу Mediapool" => "⚖️",
+                "Европейски съюз" => "🇪🇺",
+                "НАТО" => "🛡️",
+                "САЩ" => "🇺🇸",
+                "Русия" => "🇷🇺",
+                "Украйна" => "🇺🇦",
+                _ => "📰"
+            };
         }
     }
 
@@ -263,14 +238,8 @@ namespace Upr_2
                               node.SelectSingleNode(".//a[contains(@class, 'title')]") ??
                               node.SelectSingleNode(".//a");
 
-                // Try multiple selectors for datetime
-                var dateTimeNode = node.SelectSingleNode(".//div[@class='date-time']") ??
-                                 node.SelectSingleNode(".//time") ??
-                                 node.SelectSingleNode(".//*[contains(@class, 'date')]");
-
                 if (titleNode != null)
                 {
-                    string title = titleNode.InnerText.Trim();
                     string url = titleNode.GetAttributeValue("href", "").Trim();
 
                     // If URL is relative, make it absolute
@@ -279,53 +248,33 @@ namespace Upr_2
                         url = "https://www.mediapool.bg" + (url.StartsWith("/") ? url : "/" + url);
                     }
 
-                    // Extract the time from the dateTimeNode if available
-                    string dateTime = dateTimeNode?.InnerText?.Trim() ??
-                                    DateTime.Now.ToString("yyyy-MM-dd HH:mm");
+                    // Load the article page to get the actual title, author, and date
+                    var web = new HtmlWeb();
+                    var articleDoc = web.Load(url);
 
-                    // Clean the title by removing timestamps and date patterns
-                    var cleaningPatterns = new[] {
-                        @"\s+Вчера\s+\d{1,2}:\d{2}(?:\s+|$)",  // "Вчера 18:45" with optional space after
-                        @"\s+\d{1,2}:\d{2}(?:\s+|$)",  // "18:45" with optional space after
-                        @"\s+\d{2}\.\d{2}\.\d{4}\s+\d{1,2}:\d{2}(?:\s+|$)",  // "25.02.2024 18:45"
-                        @"\s+Вчера(?:\s+|$)",  // standalone "Вчера"
-                        @"\s+днес(?:\s+|$)",  // standalone "днес"
-                        @"\s+\d{1,2}\s+(?:януари|февруари|март|април|май|юни|юли|август|септември|октомври|ноември|декември)\s+\d{4}(?:\s+|$)"  // date in Bulgarian
-                    };
+                    // Get title from the specified h1 element path
+                    var articleTitleNode = articleDoc.DocumentNode.SelectSingleNode("//h1[@class='c-heading c-heading_size_1 c-heading_spaced']");
+                    string title = articleTitleNode?.InnerText?.Trim() ?? titleNode.InnerText.Trim();
 
-                    // Apply cleaning patterns until no more changes occur
-                    string previousTitle;
-                    do
-                    {
-                        previousTitle = title;
-                        foreach (var pattern in cleaningPatterns)
-                        {
-                            title = System.Text.RegularExpressions.Regex.Replace(title, pattern, " ", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                        }
-                        title = title.Trim();
-                    } while (title != previousTitle);
+                    // Get category from the specified XPath
+                    var categoryNode = articleDoc.DocumentNode.SelectSingleNode("/html/body/article/div[1]/div/div[1]/header/nav/a[2]");
+                    string categoryText = categoryNode?.InnerText?.Trim() ?? "Други";
 
-                    // Extract author only if it matches a strict pattern
-                    string? author = null;
-                    var authorMatch = System.Text.RegularExpressions.Regex.Match(title, @"(?:\s+|^)([А-Я][а-я]+\s+[А-Я][а-я]+(?:\s+[А-Я][а-я]+)*)\s*$");
-                    if (authorMatch.Success && title.Count(c => char.IsUpper(c)) >= 4)
-                    {
-                        var potentialAuthor = authorMatch.Groups[1].Value.Trim();
-                        if (potentialAuthor.Split(' ').Length >= 2 &&
-                            potentialAuthor.Split(' ').All(word => char.IsUpper(word[0]) && word.Skip(1).All(c => char.IsLower(c))))
-                        {
-                            author = potentialAuthor;
-                            title = title.Substring(0, title.Length - authorMatch.Value.Length).Trim();
-                        }
-                    }
+                    // Get author from the specified class
+                    var authorNode = articleDoc.DocumentNode.SelectSingleNode("//*[@class='u-highlight-accent u-compact-font c-article__author']");
+                    string? author = authorNode?.InnerText?.Trim();
+
+                    // Get date from the specified class
+                    var dateNode = articleDoc.DocumentNode.SelectSingleNode("//*[@class='u-highlight-insignificant u-compact-font c-site-content__header-item']");
+                    string dateTime = dateNode?.InnerText?.Trim() ?? DateTime.Now.ToString("yyyy-MM-dd HH:mm");
 
                     if (!ContainsCovid19Keywords(title))
                     {
-                        var article = new NewsArticle(title, dateTime, url);
+                        var article = new NewsArticle(title, dateTime, url, categoryText);
                         article.Author = author;
                         article.IsFavorite = _favoriteArticles.Any(a => a.Url == url);
                         articles.Add(article);
-                        Console.WriteLine($"Added article: {title}");
+                        Console.WriteLine($"Added article: {title} (Category: {categoryText})");
                     }
                 }
             }
