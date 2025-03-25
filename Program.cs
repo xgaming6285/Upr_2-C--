@@ -142,11 +142,28 @@ namespace Upr_2
             {
                 Logger.Log($"Sending API request for IP: {ip}");
                 Console.WriteLine("Изпращане на заявка към API...");
-                string response = await client.GetStringAsync($"http://ip-api.com/json/{ip}?fields=status,message,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,query");
+
+                // Add User-Agent header to identify our application
+                client.DefaultRequestHeaders.Clear();
+                client.DefaultRequestHeaders.Add("User-Agent", "IP-Lookup-Application/1.0");
+
+                string response = await client.GetStringAsync($"https://ipapi.co/{ip}/json/");
 
                 lastRequestTime = DateTime.Now;
                 Logger.Log("API request completed successfully");
                 return JsonDocument.Parse(response);
+            }
+            catch (HttpRequestException ex)
+            {
+                if (ex.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                {
+                    Logger.LogError($"Rate limit exceeded for IP: {ip}", ex);
+                    Console.WriteLine("Превишен лимит на заявките. Моля изчакайте преди да опитате отново.");
+                    return null;
+                }
+                Logger.LogError($"API request failed for IP: {ip}", ex);
+                Console.WriteLine($"Грешка от API: {ex.Message}");
+                return null;
             }
             catch (Exception ex)
             {
@@ -166,25 +183,16 @@ namespace Upr_2
 
             var root = jsonDoc.RootElement;
 
-            if (!root.TryGetProperty("status", out var status) || status.GetString() != "success")
-            {
-                string errorMessage = root.TryGetProperty("message", out var message)
-                    ? message.GetString() ?? "Неизвестна грешка"
-                    : "Неуспешна заявка";
-                Console.WriteLine($"Грешка: {errorMessage}");
-                return;
-            }
-
             Console.WriteLine("\n=== Информация за местоположението ===");
             Console.WriteLine("----------------------------------------");
 
             // Main information (displayed in green)
             Console.ForegroundColor = ConsoleColor.Green;
-            PrintProperty(root, "IP Адрес", "query");
-            PrintProperty(root, "Държава", "country");
+            PrintProperty(root, "IP Адрес", "ip");
+            PrintProperty(root, "Държава", "country_name");
             PrintProperty(root, "Град", "city");
-            PrintProperty(root, "Регион", "regionName");
-            PrintProperty(root, "Пощенски код", "zip");
+            PrintProperty(root, "Регион", "region");
+            PrintProperty(root, "Пощенски код", "postal");
             Console.ResetColor(); // Reset to default color
 
             Console.WriteLine("\n--- Допълнителна информация ---");
@@ -192,7 +200,7 @@ namespace Upr_2
             // Secondary information (displayed in purple)
             Console.ForegroundColor = ConsoleColor.Magenta;
             // Geographic coordinates
-            if (root.TryGetProperty("lat", out var lat) && root.TryGetProperty("lon", out var lon))
+            if (root.TryGetProperty("latitude", out var lat) && root.TryGetProperty("longitude", out var lon))
             {
                 Console.WriteLine($"Координати: {lat.GetDouble().ToString("F5", System.Globalization.CultureInfo.InvariantCulture)}, {lon.GetDouble().ToString("F5", System.Globalization.CultureInfo.InvariantCulture)}");
                 string mapsLink = $"https://www.google.com/maps/search/?api=1&query={lat.GetDouble().ToString("F5", System.Globalization.CultureInfo.InvariantCulture)},{lon.GetDouble().ToString("F5", System.Globalization.CultureInfo.InvariantCulture)}";
@@ -204,9 +212,16 @@ namespace Upr_2
 
             // Network information
             PrintProperty(root, "Часова зона", "timezone");
-            PrintProperty(root, "Интернет доставчик", "isp");
+            PrintProperty(root, "UTC отместване", "utc_offset");
+            PrintProperty(root, "ASN", "asn");
             PrintProperty(root, "Организация", "org");
-            PrintProperty(root, "AS номер/име", "as");
+
+            // Additional country information
+            PrintProperty(root, "Валута", "currency");
+            PrintProperty(root, "Име на валута", "currency_name");
+            PrintProperty(root, "Езици", "languages");
+            PrintProperty(root, "Площ на държава", "country_area");
+            PrintProperty(root, "Население", "country_population");
             Console.ResetColor(); // Reset to default color
 
             Console.WriteLine("----------------------------------------");
@@ -214,9 +229,21 @@ namespace Upr_2
 
         private static void PrintProperty(JsonElement root, string label, string property)
         {
-            if (root.TryGetProperty(property, out var value) && !string.IsNullOrEmpty(value.GetString()))
+            if (root.TryGetProperty(property, out var value))
             {
-                Console.WriteLine($"{label}: {value.GetString()}");
+                string displayValue = value.ValueKind switch
+                {
+                    JsonValueKind.String => value.GetString() ?? "",
+                    JsonValueKind.Number => value.GetDouble().ToString("N0"),
+                    JsonValueKind.True => "Да",
+                    JsonValueKind.False => "Не",
+                    _ => value.ToString() ?? ""
+                };
+
+                if (!string.IsNullOrEmpty(displayValue))
+                {
+                    Console.WriteLine($"{label}: {displayValue}");
+                }
             }
         }
 
