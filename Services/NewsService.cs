@@ -1,12 +1,6 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Net.Http;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 using System.Web;
 using HtmlAgilityPack;
 using Microsoft.Extensions.Options;
@@ -17,22 +11,25 @@ namespace Upr_2.Services
 {
     public class NewsService
     {
-        private List<NewsArticle> _favoriteArticles;
+        private readonly List<NewsArticle> _favoriteArticles;
         private readonly string _favoritesFilePath;
         private readonly string _newsDirectory;
-        private readonly HttpClient _httpClient;
         private readonly UrlSettings _urlSettings;
+        private readonly HttpClient _httpClient;
         private static readonly HashSet<string> CovidKeywords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "covid-19", "covid", "коронавирус", "пандемия", "ковид"
         };
 
-        public NewsService(IHttpClientFactory httpClientFactory, IOptions<UrlSettings> urlSettingsOptions)
-        {
-            _httpClient = httpClientFactory.CreateClient("DefaultClient"); // Use named or typed client
-            _urlSettings = urlSettingsOptions.Value;
+        private static readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true };
 
-            // Use AppData or UserProfile for better practice than BaseDirectory for user data
+        public NewsService(IOptions<UrlSettings> urlSettingsOptions)
+        {
+            _urlSettings = urlSettingsOptions.Value;
+            _httpClient = new HttpClient();
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36");
+
+            // Use AppData or UserProfile for user data
             string appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             string appSpecificFolder = Path.Combine(appDataPath, "Upr2ConsoleApp"); // Choose a suitable name
             Directory.CreateDirectory(appSpecificFolder);
@@ -51,13 +48,12 @@ namespace Upr_2.Services
                 if (File.Exists(_favoritesFilePath))
                 {
                     string json = File.ReadAllText(_favoritesFilePath);
-                    return JsonSerializer.Deserialize<List<NewsArticle>>(json) ?? new List<NewsArticle>();
+                    return JsonSerializer.Deserialize<List<NewsArticle>>(json) ?? [];
                 }
             }
             catch (JsonException ex)
             {
                 Logger.LogError($"Error deserializing favorites file: {_favoritesFilePath}", ex);
-                // Consider renaming corrupted file and starting fresh
             }
             catch (IOException ex)
             {
@@ -67,15 +63,14 @@ namespace Upr_2.Services
             {
                 Logger.LogError("Unexpected error loading favorites", ex);
             }
-            return new List<NewsArticle>(); // Return empty list on failure
+            return []; // Return empty list on failure
         }
 
         private void SaveFavorites()
         {
             try
             {
-                var options = new JsonSerializerOptions { WriteIndented = true };
-                string json = JsonSerializer.Serialize(_favoriteArticles, options);
+                string json = JsonSerializer.Serialize(_favoriteArticles, _jsonOptions);
                 File.WriteAllText(_favoritesFilePath, json);
             }
             catch (IOException ex)
@@ -90,11 +85,9 @@ namespace Upr_2.Services
 
         public void AddToFavorites(NewsArticle article)
         {
-            // Use Any with equality check based on URL (or use HashSet for performance)
             if (!_favoriteArticles.Any(a => a.Url == article.Url))
             {
-                article.IsFavorite = true; // Update state of the passed article if needed
-                                           // Create a copy if necessary to avoid modifying the original list's instance if it came from elsewhere
+                article.IsFavorite = true;
                 _favoriteArticles.Add(article);
                 SaveFavorites();
                 Logger.Log($"Article added to favorites: {article.Title}");
@@ -124,14 +117,13 @@ namespace Upr_2.Services
         public List<NewsArticle> GetFavoriteArticles()
         {
             // Return a copy to prevent external modification of the internal list
-            return new List<NewsArticle>(_favoriteArticles);
+            return [.. _favoriteArticles];
         }
 
         public async Task<List<NewsArticle>> ScrapeMediapoolNewsAsync()
         {
             var articles = new List<NewsArticle>();
-            var web = new HtmlWeb();
-            string targetUrl = _urlSettings.NewsServiceUrl; // Use configured URL
+            string targetUrl = _urlSettings.NewsServiceUrl;
 
             if (string.IsNullOrEmpty(targetUrl))
             {
@@ -142,21 +134,18 @@ namespace Upr_2.Services
             try
             {
                 Logger.Log($"Starting scrape of {targetUrl}");
-                // Use HttpClient for loading, potentially more efficient than HtmlWeb's internal loading
-                // var html = await _httpClient.GetStringAsync(targetUrl);
-                // var doc = new HtmlDocument();
-                // doc.LoadHtml(html);
-                // Or stick with HtmlWeb if preferred:
-                var doc = await web.LoadFromWebAsync(targetUrl).ConfigureAwait(false);
+
+                // Use HttpClient for loading
+                string html = await _httpClient.GetStringAsync(targetUrl).ConfigureAwait(false);
+                var doc = new HtmlDocument();
+                doc.LoadHtml(html);
                 Logger.Log("Successfully loaded the webpage content.");
 
-                // Refined selectors (prefer classes/IDs, less brittle)
-                // Combine multiple selectors using comma in XPath
                 var articleNodes = doc.DocumentNode.SelectNodes(
                     "//div[contains(@class, 'leading-news')]//article | " +
                     "//div[contains(@class, 'regular-news')]//article | " +
                     "//div[contains(@class, 'latest-news')]//article"
-                    ) ?? Enumerable.Empty<HtmlNode>(); // Handle null case gracefully
+                    ) ?? Enumerable.Empty<HtmlNode>();
 
                 if (!articleNodes.Any())
                 {
@@ -175,7 +164,7 @@ namespace Upr_2.Services
 
                 foreach (var node in articleNodes)
                 {
-                    NewsArticle? article = await ProcessArticleNodeAsync(node, web).ConfigureAwait(false); // Pass HtmlWeb instance
+                    NewsArticle? article = await ProcessArticleNodeAsync(node).ConfigureAwait(false);
                     if (article != null)
                     {
                         if (uniqueUrls.Add(article.Url)) // Check for duplicates
@@ -207,7 +196,7 @@ namespace Upr_2.Services
                 else if (articles.Count == 0 && processedCount == 0)
                 {
                     Logger.LogWarning("No article nodes found on the page. Website structure might have changed significantly.");
-                    Console.WriteLine("Debug info:"); // Keep console output for immediate feedback during scraping issues
+                    Console.WriteLine("Debug info:");
                     Console.WriteLine($"Page title: {doc.DocumentNode.SelectSingleNode("//title")?.InnerText}");
                     Console.WriteLine($"Total <article> tags found: {doc.DocumentNode.SelectNodes("//article")?.Count ?? 0}");
                 }
@@ -220,22 +209,21 @@ namespace Upr_2.Services
             catch (HttpRequestException ex)
             {
                 Logger.LogError($"HTTP error accessing {targetUrl}", ex);
-                throw new Exception($"Failed to access Mediapool news: {ex.Message}", ex); // Wrap original exception
+                throw new Exception($"Failed to access Mediapool news: {ex.Message}", ex);
             }
             catch (HtmlWebException ex)
             {
                 Logger.LogError($"HTML Agility Pack error accessing {targetUrl}", ex);
                 throw new Exception($"Failed to parse Mediapool news page: {ex.Message}", ex);
             }
-            catch (Exception ex) // Catch unexpected errors
+            catch (Exception ex)
             {
                 Logger.LogError($"Unexpected error during news scraping from {targetUrl}", ex);
-                throw; // Re-throw unexpected exceptions
+                throw;
             }
         }
 
-        // Consider making this async if HtmlWeb.Load becomes a bottleneck
-        private async Task<NewsArticle?> ProcessArticleNodeAsync(HtmlNode node, HtmlWeb web)
+        private async Task<NewsArticle?> ProcessArticleNodeAsync(HtmlNode node)
         {
             try
             {
@@ -247,21 +235,16 @@ namespace Upr_2.Services
                 if (string.IsNullOrEmpty(relativeUrl)) return null;
 
                 // Construct absolute URL
-                Uri baseUri = new Uri(_urlSettings.NewsServiceUrl);
-                Uri absoluteUri = new Uri(baseUri, relativeUrl);
+                Uri baseUri = new(_urlSettings.NewsServiceUrl);
+                Uri absoluteUri = new(baseUri, relativeUrl);
                 string url = absoluteUri.ToString();
 
-                // *** Efficiency Consideration ***
-                // Loading the full article page here for metadata is SLOW.
-                // If possible, get metadata (author, date, category) from the LISTING page (node).
-                // If not possible, this remains the only way.
-
-                // Attempt to get data from the listing node first (Example - adjust selectors)
+                // Attempt to get data from the listing node first
                 string titleFromList = linkNode.InnerText?.Trim() ?? "Untitled";
                 string dateFromList = node.SelectSingleNode(".//time")?.Attributes["datetime"]?.Value ??
                                       node.SelectSingleNode(".//span[contains(@class,'date')]")?.InnerText?.Trim() ??
                                       DateTime.Now.ToString("yyyy-MM-dd HH:mm"); // Fallback date
-                string categoryFromList = node.SelectSingleNode(".//a[contains(@class,'category')]")?.InnerText?.Trim() ?? "Други"; // Example selector
+                string categoryFromList = node.SelectSingleNode(".//a[contains(@class,'category')]")?.InnerText?.Trim() ?? "Други";
 
 
                 // Decide whether to load the full page (e.g., if author is needed and not on list page)
@@ -270,8 +253,10 @@ namespace Upr_2.Services
 
                 if (loadFullPage)
                 {
-                    // Load the article page (Original behavior - potentially slow)
-                    var articleDoc = await web.LoadFromWebAsync(url).ConfigureAwait(false);
+                    // Load the article page
+                    string html = await _httpClient.GetStringAsync(url).ConfigureAwait(false);
+                    var articleDoc = new HtmlDocument();
+                    articleDoc.LoadHtml(html);
 
                     // Use more robust selectors if possible, fallback to specific ones
                     var titleNode = articleDoc.DocumentNode.SelectSingleNode("//h1[contains(@class,'c-heading')]") ??
@@ -292,7 +277,7 @@ namespace Upr_2.Services
                 }
                 else
                 {
-                    // Use data extracted from the listing page (Potentially faster)
+                    // Use data extracted from the listing page
                     title = HttpUtility.HtmlDecode(titleFromList);
                     categoryText = HttpUtility.HtmlDecode(categoryFromList);
                     dateTime = dateFromList;
@@ -307,7 +292,7 @@ namespace Upr_2.Services
             catch (HttpRequestException ex)
             {
                 Logger.LogError($"HTTP error processing article node: {ex.Message}", ex);
-                return null; // Skip this article on error
+                return null;
             }
             catch (HtmlWebException ex)
             {
@@ -317,10 +302,9 @@ namespace Upr_2.Services
             catch (Exception ex)
             {
                 Logger.LogError($"Unexpected error processing article node: {ex.Message}", ex);
-                return null; // Skip on unexpected errors
+                return null;
             }
         }
-
 
         private static bool ContainsCovid19Keywords(string title)
         {
@@ -331,7 +315,7 @@ namespace Upr_2.Services
         // Store articles to HTML file
         private async Task StoreNewsArticlesAsHtmlAsync(List<NewsArticle> articles)
         {
-            if (articles == null || !articles.Any())
+            if (articles == null || articles.Count == 0)
             {
                 Logger.Log("No articles to store in HTML file.");
                 return;
@@ -345,13 +329,12 @@ namespace Upr_2.Services
             {
                 // --- HTML Header ---
                 htmlBuilder.AppendLine("<!DOCTYPE html>");
-                htmlBuilder.AppendLine("<html lang=\"bg\"><head>"); // Added lang attribute
+                htmlBuilder.AppendLine("<html lang=\"bg\"><head>"); // Language attribute
                 htmlBuilder.AppendLine("<meta charset='UTF-8'>");
                 htmlBuilder.AppendLine("<meta name='viewport' content='width=device-width, initial-scale=1.0'>");
-                htmlBuilder.AppendLine("<title>Новини от Mediapool</title>"); // Added Title
+                htmlBuilder.AppendLine("<title>Новини от Mediapool</title>"); // Title
                 htmlBuilder.AppendLine("<style>");
-                // --- CSS (Keep as is or externalize) ---
-                // (Your existing CSS goes here - Use @"" string literal for multiline)
+                // --- CSS ---
                 htmlBuilder.AppendLine(@"
                 :root {
                     --font-family: 'Inter', sans-serif;
@@ -907,13 +890,15 @@ namespace Upr_2.Services
                 // --- Articles Grid ---
                 htmlBuilder.AppendLine("<main id='articles-grid' class='articles-grid'>");
 
-                if (!articles.Any())
+                if (articles.Count == 0)
                 {
-                    // Handled by JS now, but could add a server-side message if needed
+                    htmlBuilder.AppendLine("<div class='status-message active'>");
+                    htmlBuilder.AppendLine("  <p>Няма намерени статии.</p>");
+                    htmlBuilder.AppendLine("</div>");
                 }
                 else
                 {
-                    foreach (var article in articles) // Already sorted
+                    foreach (var article in articles)
                     {
                         string favoriteClass = article.IsFavorite ? "is-favorite" : "";
                         // Use HtmlEncode for category/title in data attributes
@@ -945,7 +930,6 @@ namespace Upr_2.Services
 
                 // --- JavaScript ---
                 htmlBuilder.AppendLine("<script>");
-                // --- Enhanced JavaScript ---
                 htmlBuilder.AppendLine(@"
                     document.addEventListener('DOMContentLoaded', function() {
                         const header = document.querySelector('.header');
@@ -1151,7 +1135,7 @@ namespace Upr_2.Services
             }
         }
 
-        private void TryOpenFile(string filePath)
+        private static void TryOpenFile(string filePath)
         {
             try
             {
