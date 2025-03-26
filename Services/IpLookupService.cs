@@ -1,15 +1,32 @@
-using System;
-using System.Net.Http;
-using System.Net.Http.Json; // Requires System.Net.Http.Json package (usually included with Microsoft.Extensions.Http)
+using System.Net.Http.Json;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Options;
 using Upr_2.Settings;
-using System.Text.Json;
 
 namespace Upr_2.Services
 {
-    // Model for the ipapi.co response
+    /// <summary>
+    /// Custom exception for handling IP API specific errors.
+    /// Provides additional context about the IP address and error reason.
+    /// </summary>
+    public class IpApiException : Exception
+    {
+        public string? IpAddress { get; }
+        public string? ErrorReason { get; }
+
+        public IpApiException(string message, string? ipAddress = null, string? errorReason = null, Exception? innerException = null)
+            : base(message, innerException)
+        {
+            IpAddress = ipAddress;
+            ErrorReason = errorReason;
+        }
+    }
+
+    /// <summary>
+    /// Model class representing the response from ipapi.co service.
+    /// Contains geographical, network, and error information for an IP address.
+    /// All properties are nullable to handle partial or error responses.
+    /// </summary>
     public class IpInfo
     {
         [JsonPropertyName("ip")]
@@ -55,7 +72,7 @@ namespace Upr_2.Services
         public string? Languages { get; set; }
 
         [JsonPropertyName("country_area")]
-        public double? CountryArea { get; set; } // Assuming area can be large, double?
+        public double? CountryArea { get; set; } // Assuming area can be large
 
         [JsonPropertyName("country_population")]
         public long? CountryPopulation { get; set; } // Population can be large
@@ -75,103 +92,151 @@ namespace Upr_2.Services
             : string.Empty;
     }
 
-
+    /// <summary>
+    /// Service for looking up geographical and network information for IP addresses using ipapi.co.
+    /// Implements rate limiting, exponential backoff, and comprehensive error handling.
+    /// </summary>
     public class IpLookupService
     {
         private readonly HttpClient _httpClient;
         private readonly UrlSettings _urlSettings;
         private DateTime _lastRequestTime = DateTime.MinValue;
-        private static readonly TimeSpan RequestCooldown = TimeSpan.FromSeconds(2); // Adjusted cooldown
 
+        // Client-side rate limiting: Ensures minimum delay between requests
+        private static readonly TimeSpan RequestCooldown = TimeSpan.FromSeconds(2);
+
+        // Exponential backoff configuration
+        private const int MaxRetries = 3;              // Maximum number of retry attempts for rate-limited requests
+        private const int BaseDelayMs = 1000;         // Initial delay (1 second) for exponential backoff
+
+        /// <summary>
+        /// Initializes a new instance of IpLookupService with HTTP client factory and URL settings.
+        /// Sets up the HTTP client with appropriate headers for API communication.
+        /// </summary>
         public IpLookupService(IHttpClientFactory httpClientFactory, IOptions<UrlSettings> urlSettingsOptions)
         {
             _httpClient = httpClientFactory.CreateClient("IpApiClient"); // Use a specific client if needed
             _urlSettings = urlSettingsOptions.Value;
-            // Set base address and headers on the client via DI configuration if preferred
-            // _httpClient.BaseAddress = new Uri(_urlSettings.IpApiBaseUrl);
             _httpClient.DefaultRequestHeaders.Add("User-Agent", "Upr2-ConsoleApp/1.1");
         }
 
+        /// <summary>
+        /// Implements exponential backoff retry mechanism for handling rate-limited requests.
+        /// Retries the operation with increasing delays: 1s -> 2s -> 4s
+        /// Only retries on HTTP 429 (Too Many Requests) responses.
+        /// </summary>
+        /// <param name="operation">The async operation to retry</param>
+        /// <param name="ipAddress">IP address for context in error messages</param>
+        /// <returns>IpInfo if successful, or throws exception after max retries</returns>
+        /// <exception cref="IpApiException">Thrown when max retries are exceeded</exception>
+        private static async Task<IpInfo?> RetryWithExponentialBackoffAsync(Func<Task<IpInfo?>> operation, string ipAddress)
+        {
+            for (int attempt = 0; attempt <= MaxRetries; attempt++)
+            {
+                try
+                {
+                    return await operation().ConfigureAwait(false);
+                }
+                catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                {
+                    if (attempt == MaxRetries)
+                    {
+                        Logger.LogError($"Max retries ({MaxRetries}) exceeded for IP: {ipAddress}");
+                        throw new IpApiException(
+                            $"Rate limit exceeded after {MaxRetries} retries",
+                            ipAddress,
+                            "Too many requests",
+                            ex);
+                    }
+
+                    int delayMs = BaseDelayMs * (int)Math.Pow(2, attempt); // Exponential backoff
+                    Logger.Log($"Rate limit hit, attempt {attempt + 1}/{MaxRetries}. Waiting {delayMs / 1000.0:F1} seconds before retry...");
+                    await Task.Delay(delayMs).ConfigureAwait(false);
+                }
+            }
+
+            // This should never be reached due to the throw above, but compiler needs it
+            throw new Exception("Unexpected end of retry loop");
+        }
+
+        /// <summary>
+        /// Asynchronously retrieves location and network information for an IP address.
+        /// Features:
+        /// - Client-side rate limiting to prevent overwhelming the API
+        /// - Exponential backoff for handling server-side rate limits
+        /// - Comprehensive error handling for API responses
+        /// - Detailed logging for debugging and monitoring
+        /// </summary>
+        /// <param name="ipAddress">The IP address to look up</param>
+        /// <returns>
+        /// - Successful response: IpInfo object with location data
+        /// - Reserved IP: IpInfo object with Reserved=true
+        /// - Error cases: Throws appropriate exceptions
+        /// </returns>
+        /// <exception cref="InvalidOperationException">When API URL is not configured</exception>
+        /// <exception cref="IpApiException">When API returns an error response</exception>
+        /// <exception cref="HttpRequestException">For HTTP-related errors</exception>
         public async Task<IpInfo?> GetLocationInfoAsync(string ipAddress)
         {
+            // Validate configuration
             if (string.IsNullOrEmpty(_urlSettings.IpApiBaseUrl))
             {
                 Logger.LogError("IpApiBaseUrl is not configured.");
                 throw new InvalidOperationException("IP lookup service URL is not configured.");
             }
 
-            // Basic Rate Limiting (Client-Side)
-            var timeSinceLastRequest = DateTime.Now - _lastRequestTime;
-            if (timeSinceLastRequest < RequestCooldown)
+            // Wrap the entire operation in exponential backoff retry mechanism
+            return await RetryWithExponentialBackoffAsync(async () =>
             {
-                var waitTime = RequestCooldown - timeSinceLastRequest;
-                Logger.Log($"Rate limit self-imposed, waiting for {waitTime.TotalSeconds:F1} seconds");
-                await Task.Delay(waitTime).ConfigureAwait(false);
-            }
+                // Implement client-side rate limiting
+                var timeSinceLastRequest = DateTime.Now - _lastRequestTime;
+                if (timeSinceLastRequest < RequestCooldown)
+                {
+                    var waitTime = RequestCooldown - timeSinceLastRequest;
+                    Logger.Log($"Rate limit self-imposed, waiting for {waitTime.TotalSeconds:F1} seconds");
+                    await Task.Delay(waitTime).ConfigureAwait(false);
+                }
 
-            string requestUrl = $"{_urlSettings.IpApiBaseUrl.TrimEnd('/')}/{ipAddress}/json/";
-            Logger.Log($"Sending IP lookup request to: {requestUrl}");
+                // Construct and send the API request
+                string requestUrl = $"{_urlSettings.IpApiBaseUrl.TrimEnd('/')}/{ipAddress}/json/";
+                Logger.Log($"Sending IP lookup request to: {requestUrl}");
 
-            try
-            {
                 var response = await _httpClient.GetAsync(requestUrl).ConfigureAwait(false);
-                _lastRequestTime = DateTime.Now; // Update time after request attempt
+                _lastRequestTime = DateTime.Now; // Update last request timestamp
 
                 if (response.IsSuccessStatusCode)
                 {
                     var ipInfo = await response.Content.ReadFromJsonAsync<IpInfo>().ConfigureAwait(false);
 
+                    // Handle API-level errors in successful HTTP responses
                     if (ipInfo?.Error == true)
                     {
-                         Logger.LogWarning($"IP API returned error for {ipAddress}: {ipInfo.Reason}");
-                         // You might want to throw a specific exception here or return null/ipInfo
-                         return ipInfo; // Return the object containing the error reason
+                        Logger.LogWarning($"IP API returned error for {ipAddress}: {ipInfo.Reason}");
+                        throw new IpApiException($"IP API returned error: {ipInfo.Reason}", ipAddress, ipInfo.Reason);
                     }
+                    // Handle reserved IP addresses (special case)
                     if (ipInfo?.Reserved == true)
                     {
                         Logger.Log($"IP address {ipAddress} is reserved.");
-                        // Handle reserved IPs appropriately
                         return ipInfo;
                     }
 
                     Logger.Log($"Successfully retrieved location info for {ipAddress}");
                     return ipInfo;
                 }
+                // Handle rate limiting with exponential backoff
                 else if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
                 {
                     Logger.LogError($"Rate limit exceeded (429) from API for IP: {ipAddress}");
-                    // Consider implementing exponential backoff here
                     throw new HttpRequestException("API rate limit exceeded. Please wait and try again.", null, response.StatusCode);
                 }
+                // Handle all other HTTP errors
                 else
                 {
                     Logger.LogError($"API request failed for IP {ipAddress}. Status: {response.StatusCode}, Reason: {response.ReasonPhrase}");
-                     // Throw exception with details
-                     throw new HttpRequestException($"IP lookup failed: {response.ReasonPhrase} ({(int)response.StatusCode})", null, response.StatusCode);
+                    throw new HttpRequestException($"IP lookup failed: {response.ReasonPhrase} ({(int)response.StatusCode})", null, response.StatusCode);
                 }
-            }
-            // Catch specific exceptions first
-            catch (JsonException jsonEx)
-            {
-                 Logger.LogError($"Failed to parse JSON response for IP {ipAddress}", jsonEx);
-                 throw new Exception("Failed to process the response from the IP lookup service.", jsonEx);
-            }
-            catch (HttpRequestException httpEx)
-            {
-                // Logged above or re-throw if needed
-                Logger.LogError($"HTTP request failed during IP lookup for {ipAddress}", httpEx);
-                throw; // Re-throw the original HttpRequestException
-            }
-            catch (TaskCanceledException cancelEx) // Handle timeouts
-            {
-                Logger.LogError($"IP lookup request timed out for {ipAddress}", cancelEx);
-                throw new TimeoutException("The IP lookup request timed out.", cancelEx);
-            }
-            catch (Exception ex) // Catch unexpected errors
-            {
-                Logger.LogError($"Unexpected error during IP lookup for {ipAddress}", ex);
-                throw new Exception("An unexpected error occurred during IP lookup.", ex);
-            }
+            }, ipAddress).ConfigureAwait(false);
         }
     }
 }
