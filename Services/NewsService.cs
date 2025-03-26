@@ -61,7 +61,7 @@ namespace Upr_2.Services
             }
             catch (IOException ex)
             {
-                 Logger.LogError($"Error reading favorites file: {_favoritesFilePath}", ex);
+                Logger.LogError($"Error reading favorites file: {_favoritesFilePath}", ex);
             }
             catch (Exception ex)
             {
@@ -78,9 +78,9 @@ namespace Upr_2.Services
                 string json = JsonSerializer.Serialize(_favoriteArticles, options);
                 File.WriteAllText(_favoritesFilePath, json);
             }
-             catch (IOException ex)
+            catch (IOException ex)
             {
-                 Logger.LogError($"Error writing favorites file: {_favoritesFilePath}", ex);
+                Logger.LogError($"Error writing favorites file: {_favoritesFilePath}", ex);
             }
             catch (Exception ex)
             {
@@ -94,14 +94,14 @@ namespace Upr_2.Services
             if (!_favoriteArticles.Any(a => a.Url == article.Url))
             {
                 article.IsFavorite = true; // Update state of the passed article if needed
-                 // Create a copy if necessary to avoid modifying the original list's instance if it came from elsewhere
+                                           // Create a copy if necessary to avoid modifying the original list's instance if it came from elsewhere
                 _favoriteArticles.Add(article);
                 SaveFavorites();
                 Logger.Log($"Article added to favorites: {article.Title}");
             }
-             else
+            else
             {
-                 Logger.Log($"Article already in favorites: {article.Title}");
+                Logger.Log($"Article already in favorites: {article.Title}");
             }
         }
 
@@ -113,11 +113,11 @@ namespace Upr_2.Services
                 _favoriteArticles.Remove(existingArticle);
                 // article.IsFavorite = false; // Optionally update the state of the *input* article
                 SaveFavorites();
-                 Logger.Log($"Article removed from favorites: {article.Title}");
+                Logger.Log($"Article removed from favorites: {article.Title}");
             }
-             else
+            else
             {
-                 Logger.Log($"Article not found in favorites for removal: {article.Title}");
+                Logger.Log($"Article not found in favorites for removal: {article.Title}");
             }
         }
 
@@ -135,28 +135,28 @@ namespace Upr_2.Services
 
             if (string.IsNullOrEmpty(targetUrl))
             {
-                 Logger.LogError("NewsServiceUrl is not configured in UrlSettings.");
-                 throw new InvalidOperationException("News service URL is not configured.");
+                Logger.LogError("NewsServiceUrl is not configured in UrlSettings.");
+                throw new InvalidOperationException("News service URL is not configured.");
             }
 
             try
             {
                 Logger.Log($"Starting scrape of {targetUrl}");
                 // Use HttpClient for loading, potentially more efficient than HtmlWeb's internal loading
-                 // var html = await _httpClient.GetStringAsync(targetUrl);
-                 // var doc = new HtmlDocument();
-                 // doc.LoadHtml(html);
+                // var html = await _httpClient.GetStringAsync(targetUrl);
+                // var doc = new HtmlDocument();
+                // doc.LoadHtml(html);
                 // Or stick with HtmlWeb if preferred:
-                 var doc = await web.LoadFromWebAsync(targetUrl).ConfigureAwait(false);
+                var doc = await web.LoadFromWebAsync(targetUrl).ConfigureAwait(false);
                 Logger.Log("Successfully loaded the webpage content.");
 
                 // Refined selectors (prefer classes/IDs, less brittle)
                 // Combine multiple selectors using comma in XPath
-                 var articleNodes = doc.DocumentNode.SelectNodes(
-                     "//div[contains(@class, 'leading-news')]//article | " +
-                     "//div[contains(@class, 'regular-news')]//article | " +
-                     "//div[contains(@class, 'latest-news')]//article"
-                     ) ?? Enumerable.Empty<HtmlNode>(); // Handle null case gracefully
+                var articleNodes = doc.DocumentNode.SelectNodes(
+                    "//div[contains(@class, 'leading-news')]//article | " +
+                    "//div[contains(@class, 'regular-news')]//article | " +
+                    "//div[contains(@class, 'latest-news')]//article"
+                    ) ?? Enumerable.Empty<HtmlNode>(); // Handle null case gracefully
 
                 if (!articleNodes.Any())
                 {
@@ -178,7 +178,7 @@ namespace Upr_2.Services
                     NewsArticle? article = await ProcessArticleNodeAsync(node, web).ConfigureAwait(false); // Pass HtmlWeb instance
                     if (article != null)
                     {
-                         if (uniqueUrls.Add(article.Url)) // Check for duplicates
+                        if (uniqueUrls.Add(article.Url)) // Check for duplicates
                         {
                             if (ContainsCovid19Keywords(article.Title))
                             {
@@ -190,7 +190,7 @@ namespace Upr_2.Services
                                 articles.Add(article);
                             }
                         }
-                         else
+                        else
                         {
                             skippedDuplicateCount++;
                         }
@@ -204,10 +204,10 @@ namespace Upr_2.Services
                 {
                     Logger.LogWarning("Processed article nodes but extracted 0 valid news items. Website structure might have changed.");
                 }
-                 else if (articles.Count == 0 && processedCount == 0)
+                else if (articles.Count == 0 && processedCount == 0)
                 {
                     Logger.LogWarning("No article nodes found on the page. Website structure might have changed significantly.");
-                     Console.WriteLine("Debug info:"); // Keep console output for immediate feedback during scraping issues
+                    Console.WriteLine("Debug info:"); // Keep console output for immediate feedback during scraping issues
                     Console.WriteLine($"Page title: {doc.DocumentNode.SelectSingleNode("//title")?.InnerText}");
                     Console.WriteLine($"Total <article> tags found: {doc.DocumentNode.SelectNodes("//article")?.Count ?? 0}");
                 }
@@ -219,8 +219,8 @@ namespace Upr_2.Services
             }
             catch (HttpRequestException ex)
             {
-                 Logger.LogError($"HTTP error accessing {targetUrl}", ex);
-                 throw new Exception($"Failed to access Mediapool news: {ex.Message}", ex); // Wrap original exception
+                Logger.LogError($"HTTP error accessing {targetUrl}", ex);
+                throw new Exception($"Failed to access Mediapool news: {ex.Message}", ex); // Wrap original exception
             }
             catch (HtmlWebException ex)
             {
@@ -234,12 +234,12 @@ namespace Upr_2.Services
             }
         }
 
-         // Consider making this async if HtmlWeb.Load becomes a bottleneck
+        // Consider making this async if HtmlWeb.Load becomes a bottleneck
         private async Task<NewsArticle?> ProcessArticleNodeAsync(HtmlNode node, HtmlWeb web)
         {
             try
             {
-                 // Simpler selector for the link/title first
+                // Simpler selector for the link/title first
                 var linkNode = node.SelectSingleNode(".//h2/a | .//h3/a | .//a[contains(@class,'title')] | .//a");
                 if (linkNode == null) return null; // Skip if no link found
 
@@ -251,29 +251,29 @@ namespace Upr_2.Services
                 Uri absoluteUri = new Uri(baseUri, relativeUrl);
                 string url = absoluteUri.ToString();
 
-                 // *** Efficiency Consideration ***
-                 // Loading the full article page here for metadata is SLOW.
-                 // If possible, get metadata (author, date, category) from the LISTING page (node).
-                 // If not possible, this remains the only way.
+                // *** Efficiency Consideration ***
+                // Loading the full article page here for metadata is SLOW.
+                // If possible, get metadata (author, date, category) from the LISTING page (node).
+                // If not possible, this remains the only way.
 
                 // Attempt to get data from the listing node first (Example - adjust selectors)
-                 string titleFromList = linkNode.InnerText?.Trim() ?? "Untitled";
-                 string dateFromList = node.SelectSingleNode(".//time")?.Attributes["datetime"]?.Value ??
-                                       node.SelectSingleNode(".//span[contains(@class,'date')]")?.InnerText?.Trim() ??
-                                       DateTime.Now.ToString("yyyy-MM-dd HH:mm"); // Fallback date
-                 string categoryFromList = node.SelectSingleNode(".//a[contains(@class,'category')]")?.InnerText?.Trim() ?? "Други"; // Example selector
+                string titleFromList = linkNode.InnerText?.Trim() ?? "Untitled";
+                string dateFromList = node.SelectSingleNode(".//time")?.Attributes["datetime"]?.Value ??
+                                      node.SelectSingleNode(".//span[contains(@class,'date')]")?.InnerText?.Trim() ??
+                                      DateTime.Now.ToString("yyyy-MM-dd HH:mm"); // Fallback date
+                string categoryFromList = node.SelectSingleNode(".//a[contains(@class,'category')]")?.InnerText?.Trim() ?? "Други"; // Example selector
 
 
-                 // Decide whether to load the full page (e.g., if author is needed and not on list page)
-                 bool loadFullPage = true; // Set to true to keep original behavior, false to try list data first
-                 string title, categoryText, dateTime, author;
+                // Decide whether to load the full page (e.g., if author is needed and not on list page)
+                bool loadFullPage = true; // Set to true to keep original behavior, false to try list data first
+                string title, categoryText, dateTime, author;
 
-                 if (loadFullPage)
-                 {
-                     // Load the article page (Original behavior - potentially slow)
-                     var articleDoc = await web.LoadFromWebAsync(url).ConfigureAwait(false);
+                if (loadFullPage)
+                {
+                    // Load the article page (Original behavior - potentially slow)
+                    var articleDoc = await web.LoadFromWebAsync(url).ConfigureAwait(false);
 
-                     // Use more robust selectors if possible, fallback to specific ones
+                    // Use more robust selectors if possible, fallback to specific ones
                     var titleNode = articleDoc.DocumentNode.SelectSingleNode("//h1[contains(@class,'c-heading')]") ??
                                     articleDoc.DocumentNode.SelectSingleNode("//h1"); // Broader H1
                     title = HttpUtility.HtmlDecode(titleNode?.InnerText?.Trim() ?? titleFromList); // Use list title as fallback
@@ -282,22 +282,22 @@ namespace Upr_2.Services
                                        articleDoc.DocumentNode.SelectSingleNode("//a[contains(@class,'article-category')]"); // Try specific class
                     categoryText = HttpUtility.HtmlDecode(categoryNode?.InnerText?.Trim() ?? categoryFromList);
 
-                     // Selector refinement for date and author
-                     var dateNode = articleDoc.DocumentNode.SelectSingleNode("//time[@datetime]")?.Attributes["datetime"]?.Value ?? // Prefer <time> tag
-                                   articleDoc.DocumentNode.SelectSingleNode("//*[contains(@class,'article__timestamp')] | //*[contains(@class,'article__date')] | //*[contains(@class,'u-highlight-insignificant')]")?.InnerText?.Trim();
-                     dateTime = dateNode ?? dateFromList;
+                    // Selector refinement for date and author
+                    var dateNode = articleDoc.DocumentNode.SelectSingleNode("//time[@datetime]")?.Attributes["datetime"]?.Value ?? // Prefer <time> tag
+                                  articleDoc.DocumentNode.SelectSingleNode("//*[contains(@class,'article__timestamp')] | //*[contains(@class,'article__date')] | //*[contains(@class,'u-highlight-insignificant')]")?.InnerText?.Trim();
+                    dateTime = dateNode ?? dateFromList;
 
-                     var authorNode = articleDoc.DocumentNode.SelectSingleNode("//*[contains(@class,'c-article__author')] | //a[contains(@rel,'author')]");
-                     author = HttpUtility.HtmlDecode(authorNode?.InnerText?.Trim() ?? string.Empty);
-                 }
-                 else
-                 {
-                     // Use data extracted from the listing page (Potentially faster)
-                     title = HttpUtility.HtmlDecode(titleFromList);
-                     categoryText = HttpUtility.HtmlDecode(categoryFromList);
-                     dateTime = dateFromList;
-                     author = string.Empty; // Assume author not available on list page
-                 }
+                    var authorNode = articleDoc.DocumentNode.SelectSingleNode("//*[contains(@class,'c-article__author')] | //a[contains(@rel,'author')]");
+                    author = HttpUtility.HtmlDecode(authorNode?.InnerText?.Trim() ?? string.Empty);
+                }
+                else
+                {
+                    // Use data extracted from the listing page (Potentially faster)
+                    title = HttpUtility.HtmlDecode(titleFromList);
+                    categoryText = HttpUtility.HtmlDecode(categoryFromList);
+                    dateTime = dateFromList;
+                    author = string.Empty; // Assume author not available on list page
+                }
 
 
                 // Create article object
@@ -309,10 +309,10 @@ namespace Upr_2.Services
                 Logger.LogError($"HTTP error processing article node: {ex.Message}", ex);
                 return null; // Skip this article on error
             }
-             catch (HtmlWebException ex)
+            catch (HtmlWebException ex)
             {
-                 Logger.LogError($"HTML Agility Pack error processing article node: {ex.Message}", ex);
-                 return null;
+                Logger.LogError($"HTML Agility Pack error processing article node: {ex.Message}", ex);
+                return null;
             }
             catch (Exception ex)
             {
@@ -325,7 +325,7 @@ namespace Upr_2.Services
         private static bool ContainsCovid19Keywords(string title)
         {
             // Check if any keyword exists in the title
-             return CovidKeywords.Any(keyword => title.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+            return CovidKeywords.Any(keyword => title.Contains(keyword, StringComparison.OrdinalIgnoreCase));
         }
 
         // Store articles to HTML file
@@ -354,531 +354,777 @@ namespace Upr_2.Services
                 // (Your existing CSS goes here - Use @"" string literal for multiline)
                 htmlBuilder.AppendLine(@"
                 :root {
-                    --bg-color: #1a1a1a;
-                    --card-bg: #2d2d2d;
-                    --text-primary: #ffffff;
-                    --text-secondary: #b3b3b3;
-                    --accent-color: #3498db;
-                    --favorite-color: #f1c40f;
-                    --category-color: #e74c3c;
+                    --font-family: 'Inter', sans-serif;
+                    --bg-color: #121212; /* Darker background */
+                    --card-bg: #1e1e1e; /* Slightly lighter card */
+                    --text-primary: #e0e0e0; /* Off-white */
+                    --text-secondary: #a0a0a0; /* Grey */
+                    --accent-color: #007bff; /* Vibrant blue */
+                    --accent-hover: #0056b3;
+                    --favorite-color: #ffc107; /* Amber */
+                    --category-color: #dc3545; /* Red */
+                    --border-color: rgba(255, 255, 255, 0.1);
+                    --shadow-color: rgba(0, 0, 0, 0.5);
+                    --card-border-radius: 16px;
+                    --button-border-radius: 25px;
+                    --transition-speed: 0.3s;
                 }
 
                 :root[data-theme='light'] {
-                    --bg-color: #f5f5f5;
+                    --bg-color: #f8f9fa;
                     --card-bg: #ffffff;
-                    --text-primary: #333333;
-                    --text-secondary: #666666;
-                    --accent-color: #2980b9;
+                    --text-primary: #212529;
+                    --text-secondary: #6c757d;
+                    --accent-color: #007bff;
+                    --accent-hover: #0056b3;
+                    --border-color: rgba(0, 0, 0, 0.1);
+                    --shadow-color: rgba(0, 0, 0, 0.1);
                 }
 
-                body { 
-                    font-family: 'Segoe UI', Arial, sans-serif;
+                *, *::before, *::after {
+                    box-sizing: border-box;
+                }
+
+                body {
+                    font-family: var(--font-family);
                     background-color: var(--bg-color);
                     color: var(--text-primary);
                     margin: 0;
-                    padding: 20px;
+                    padding: 0; /* Remove default padding */
                     line-height: 1.6;
-                    transition: background-color 0.3s ease, color 0.3s ease;
+                    transition: background-color var(--transition-speed) ease, color var(--transition-speed) ease;
+                    overflow-x: hidden; /* Prevent horizontal scroll */
                 }
 
                 .container {
-                    max-width: 1200px;
+                    max-width: 1400px; /* Wider container */
                     margin: 0 auto;
+                    padding: 0 20px; /* Padding on sides */
                 }
 
+                /* --- Sticky Header --- */
                 .header {
-                    text-align: center;
-                    padding: 20px;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
                     position: sticky;
                     top: 0;
                     background-color: var(--bg-color);
-                    z-index: 100;
-                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-                    transition: all 0.3s ease;
+                    z-index: 1000;
+                    padding: 20px 0;
+                    border-bottom: 1px solid var(--border-color);
+                    box-shadow: 0 2px 10px var(--shadow-color);
+                    transition: all var(--transition-speed) ease;
+                    transform: translateY(0);
                 }
 
-                .header.scrolled {
-                    padding: 10px;
+                .header.hidden {
+                    transform: translateY(-100%);
                 }
 
-                .header h1 {
-                    margin: 0;
-                    color: var(--text-primary);
-                    font-size: 2.5em;
-                    transition: all 0.3s ease;
+                .header-content {
+                     max-width: 1400px;
+                     margin: 0 auto;
+                     padding: 0 20px;
+                     display: flex;
+                     flex-direction: column;
+                     align-items: center;
+                     gap: 15px;
                 }
 
-                .datetime {
-                    margin-top: 10px;
-                    transition: all 0.3s ease;
-                }
-
-                .collapsible-content {
-                    transition: all 0.3s ease;
-                    overflow: hidden;
-                }
-
-                .header.scrolled .collapsible-content {
-                    height: 0;
-                    opacity: 0;
-                    margin: 0;
-                    padding: 0;
-                }
-
-                .controls {
-                    display: flex;
-                    justify-content: center;
-                    gap: 20px;
-                    margin: 20px 0;
-                    flex-wrap: wrap;
-                    transition: all 0.3s ease;
-                }
-
-                .header.scrolled .controls {
-                    margin: 0;
-                }
-
-                .search-container {
-                    position: relative;
-                    z-index: 101;
-                    transition: all 0.3s ease;
-                }
-
-                .search-box {
-                    padding: 10px 15px;
-                    border: 2px solid var(--accent-color);
-                    border-radius: 25px;
-                    width: 300px;
-                    background-color: var(--card-bg);
-                    color: var(--text-primary);
-                    font-size: 16px;
-                    transition: all 0.3s ease;
-                }
-
-                .search-box:focus {
-                    outline: none;
-                    box-shadow: 0 0 10px rgba(52, 152, 219, 0.3);
-                    border-color: var(--accent-color);
-                }
-
-                .header.scrolled .search-box {
-                    width: 200px;
-                    padding: 8px 12px;
-                    font-size: 14px;
-                }
-
-                .theme-toggle {
-                    background-color: var(--accent-color);
-                    color: white;
+                /* Category expansion button */
+                .category-expand-btn {
+                    position: absolute;
+                    right: 0;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    background: linear-gradient(90deg, transparent, var(--bg-color) 30%);
+                    padding: 8px 15px;
                     border: none;
-                    padding: 10px 20px;
-                    border-radius: 25px;
+                    color: var(--text-primary);
                     cursor: pointer;
-                    font-size: 16px;
-                    transition: all 0.3s ease;
+                    display: none; /* Hidden by default */
+                    font-size: 1.2em;
+                    z-index: 2;
+                    transition: all var(--transition-speed) ease;
                 }
 
-                .theme-toggle:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+                .category-expand-btn:hover {
+                    color: var(--accent-color);
+                }
+
+                .category-filters-container {
+                    width: 100%;
+                    position: relative;
+                    overflow: hidden;
+                    max-height: 60px; /* Height for single row */
+                    transition: max-height var(--transition-speed) ease;
                 }
 
                 .category-filters {
                     display: flex;
                     gap: 10px;
+                    justify-content: flex-start;
+                    margin: 10px 0 0 0;
+                    transition: all var(--transition-speed) ease;
+                    padding: 5px 30px 5px 0; /* Added right padding for button */
+                    overflow-x: auto;
+                    scrollbar-width: none; /* Firefox */
+                    -ms-overflow-style: none; /* IE/Edge */
+                    flex-wrap: nowrap; /* Default to single line */
+                }
+
+                .category-filters.expanded {
                     flex-wrap: wrap;
-                    justify-content: center;
-                    margin: 20px 0;
                 }
 
-                .category-filter {
-                    background-color: var(--card-bg);
-                    color: var(--text-primary);
-                    border: 2px solid var(--accent-color);
-                    padding: 8px 15px;
-                    border-radius: 20px;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
+                .category-filters.expanded + .category-expand-btn {
+                    transform: translateY(-50%) rotate(90deg);
                 }
 
-                .category-filter.active {
-                    background-color: var(--accent-color);
-                    color: white;
+                .category-filters-container:has(.category-filters.expanded) {
+                    max-height: 200px; /* Increased height when expanded */
+                    overflow-y: auto;
                 }
 
-                .articles-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-                    gap: 30px;
-                    margin-top: 40px;
-                    padding: 20px;
+                .header.scrolled {
+                    padding: 10px 0;
+                    background-color: color-mix(in srgb, var(--bg-color) 95%, black); /* Slightly darker scrolled */
                 }
 
-                .article { 
-                    margin: 0;
-                    padding: 25px;
-                    background-color: var(--card-bg);
-                    border-radius: 20px;
-                    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-                    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-                    display: flex;
-                    flex-direction: column;
-                    height: 100%;
-                    position: relative;
-                    overflow: hidden;
-                    border: 1px solid rgba(255, 255, 255, 0.1);
-                    backdrop-filter: blur(10px);
-                    -webkit-backdrop-filter: blur(10px);
-                }
+                 .header h1 {
+                     margin: 0;
+                     color: var(--text-primary);
+                     font-size: clamp(1.8em, 4vw, 2.5em); /* Responsive font size */
+                     font-weight: 700;
+                     transition: all var(--transition-speed) ease;
+                 }
 
-                .article:hover {
-                    transform: translateY(-8px);
-                    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
-                    border-color: var(--accent-color);
-                }
-
-                .article::before {
-                    content: '';
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 4px;
-                    background: linear-gradient(90deg, var(--accent-color), var(--category-color));
-                    opacity: 0;
-                    transition: opacity 0.4s ease;
-                }
-
-                .article:hover::before {
+                .datetime {
+                    color: var(--text-secondary);
+                    font-size: 0.9em;
+                    transition: all var(--transition-speed) ease;
+                    /* Hide when scrolled */
+                    max-height: 50px; /* Allow space */
                     opacity: 1;
                 }
 
-                .article.is-favorite {
-                    background: linear-gradient(145deg, var(--card-bg), rgba(52, 152, 219, 0.1));
-                    border-color: var(--favorite-color);
+                .header.scrolled .datetime {
+                    max-height: 0;
+                    opacity: 0;
+                    margin: 0;
+                    padding: 0;
+                    overflow: hidden;
                 }
 
-                .title { 
-                    color: var(--text-primary);
-                    font-size: 1.5em;
-                    font-weight: 600;
-                    margin-bottom: 20px;
-                    line-height: 1.5;
-                    padding: 15px;
-                    border-radius: 12px;
-                    background-color: rgba(0, 0, 0, 0.05);
-                    border-left: 4px solid var(--accent-color);
-                    letter-spacing: -0.02em;
-                }
 
-                .metadata {
+                /* --- Controls within Header --- */
+                 .controls-container {
+                    width: 100%;
                     display: flex;
                     flex-wrap: wrap;
+                    justify-content: space-between; /* Space out controls */
+                    align-items: center;
                     gap: 15px;
-                    margin: 20px 0;
-                    padding: 15px;
-                    background-color: rgba(0, 0, 0, 0.03);
-                    border-radius: 12px;
-                    backdrop-filter: blur(5px);
-                    -webkit-backdrop-filter: blur(5px);
+                     transition: all var(--transition-speed) ease;
+                 }
+
+                .search-container {
+                     flex-grow: 1; /* Allow search to take space */
+                     min-width: 250px; /* Minimum width */
+                     max-width: 400px; /* Maximum width */
                 }
 
-                .metadata-item {
+                .search-box {
+                    width: 100%; /* Fill container */
+                    padding: 12px 20px;
+                    border: 1px solid var(--border-color);
+                    border-radius: var(--button-border-radius);
+                    background-color: var(--card-bg);
+                    color: var(--text-primary);
+                    font-size: 1em;
+                    transition: all var(--transition-speed) ease;
+                }
+
+                .search-box:focus {
+                    outline: none;
+                    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent-color) 30%, transparent);
+                    border-color: var(--accent-color);
+                }
+
+                 .theme-toggle {
+                    background-color: var(--card-bg);
+                    color: var(--text-primary);
+                    border: 1px solid var(--border-color);
+                    padding: 10px 15px; /* Adjust padding */
+                    border-radius: 50%; /* Make it round */
+                    cursor: pointer;
+                    font-size: 1.2em; /* Slightly larger icon */
+                    transition: all var(--transition-speed) ease;
+                    line-height: 1; /* Ensure icon centers */
+                    width: 44px; /* Fixed size */
+                    height: 44px;
                     display: flex;
+                    justify-content: center;
                     align-items: center;
-                    gap: 8px;
-                    padding: 6px 12px;
-                    background-color: rgba(255, 255, 255, 0.1);
-                    border-radius: 20px;
-                    font-size: 0.95em;
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-                    transition: all 0.3s ease;
+                }
+
+                .theme-toggle:hover {
+                    transform: scale(1.1) rotate(15deg);
+                    border-color: var(--accent-color);
+                    color: var(--accent-color);
+                    box-shadow: 0 0 10px var(--shadow-color);
+                }
+
+
+                 /* --- Category Filters --- */
+                 .category-filters-container {
+                     width: 100%;
+                     position: relative;
+                 }
+
+                .category-filters {
+                    display: flex;
+                    gap: 10px;
+                    justify-content: flex-start;
+                    margin: 10px 0 0 0;
+                    transition: all var(--transition-speed) ease;
+                    padding: 5px 0;
+                }
+
+
+                .category-filter {
+                    background-color: var(--card-bg);
+                    color: var(--text-secondary);
+                    border: 1px solid var(--border-color);
+                    padding: 8px 18px;
+                    border-radius: var(--button-border-radius);
+                    cursor: pointer;
+                    font-size: 0.9em;
+                    font-weight: 500;
+                    white-space: nowrap;
+                    transition: all var(--transition-speed) ease;
+                }
+
+                .category-filter:hover {
+                    color: var(--text-primary);
+                    border-color: var(--accent-color);
+                    transform: translateY(-2px);
+                }
+
+
+                .category-filter.active {
+                    background-color: var(--accent-color);
+                    color: #ffffff;
+                    border-color: var(--accent-color);
+                    font-weight: 600;
+                    box-shadow: 0 2px 5px var(--shadow-color);
+                }
+
+                /* --- Articles Grid --- */
+                .articles-grid {
+                    display: grid;
+                    /* grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); */
+                    grid-template-columns: repeat(auto-fill, minmax(min(100%, 400px), 1fr)); /* More robust responsive columns */
+                    gap: 30px; /* Increased gap */
+                    padding: 40px 0; /* More vertical padding */
+                    transition: opacity var(--transition-speed) ease; /* Fade during filter */
+                }
+
+                /* --- Article Card Styling --- */
+                .article {
+                    background-color: var(--card-bg);
+                    border-radius: var(--card-border-radius);
+                    border: 1px solid var(--border-color);
+                    box-shadow: 0 4px 15px var(--shadow-color);
+                    transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); /* Smoother transition */
+                    display: flex;
+                    flex-direction: column;
+                    /* Removed fixed height, let content define height */
+                    position: relative;
+                    overflow: hidden; /* Needed for pseudo-elements */
+                    padding: 30px; /* More padding */
+                }
+
+                 .article:hover {
+                    transform: translateY(-8px) scale(1.01); /* Lift and slightly scale */
+                    box-shadow: 0 10px 25px var(--shadow-color);
+                    border-color: var(--accent-color);
+                 }
+
+                 /* Highlight Bar Effect */
+                 .article::before {
+                     content: '';
+                     position: absolute;
+                     top: 0;
+                     left: 0;
+                     width: 100%;
+                     height: 6px; /* Thicker bar */
+                     background: linear-gradient(90deg, var(--accent-color), color-mix(in srgb, var(--accent-color) 60%, var(--category-color)));
+                     opacity: 0;
+                     transform: scaleX(0);
+                     transform-origin: left;
+                     transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+                 }
+
+                 .article:hover::before {
+                     opacity: 1;
+                     transform: scaleX(1);
+                 }
+
+
+                 .article.is-favorite {
+                     border-left: 5px solid var(--favorite-color); /* Use left border for fav */
+                     background: color-mix(in srgb, var(--card-bg) 90%, var(--favorite-color)); /* Subtle background tint */
+                 }
+                 .article.is-favorite:hover {
+                    border-color: var(--favorite-color); /* Keep favorite border color on hover */
+                 }
+                 .article.is-favorite::before {
+                     background: linear-gradient(90deg, var(--favorite-color), var(--accent-color)); /* Favorite gradient */
+                 }
+
+
+                 .title {
+                     color: var(--text-primary);
+                     font-size: clamp(1.2em, 2vw, 1.4em); /* Responsive Title */
+                     font-weight: 600;
+                     margin: 0 0 20px 0; /* Only bottom margin */
+                     line-height: 1.4; /* Adjust line height */
+                     letter-spacing: -0.01em;
+                     display: flex; /* Align emoji */
+                     align-items: flex-start;
+                     gap: 10px;
+                 }
+                 .title .emoji {
+                     font-size: 1.2em; /* Control emoji size relative to text */
+                     line-height: 1.4;
+                 }
+
+                 .metadata {
+                     display: flex;
+                     flex-wrap: wrap;
+                     gap: 12px; /* Adjust gap */
+                     margin: 0 0 25px 0; /* Adjust margins */
+                     color: var(--text-secondary);
+                     font-size: 0.85em;
+                 }
+
+                .metadata-item {
+                    display: inline-flex; /* Use inline-flex */
+                    align-items: center;
+                    gap: 6px;
+                    padding: 5px 12px;
+                    background-color: color-mix(in srgb, var(--card-bg) 50%, var(--bg-color)); /* Mix background colors */
+                    border-radius: 15px;
+                    border: 1px solid var(--border-color);
+                    font-weight: 500;
+                    transition: all var(--transition-speed) ease;
+                }
+                .metadata-item .emoji { /* Style emoji within metadata */
+                     font-size: 1.1em;
+                     opacity: 0.8;
                 }
 
                 .metadata-item:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+                     background-color: color-mix(in srgb, var(--accent-color) 15%, var(--card-bg));
+                     color: var(--text-primary);
+                     border-color: var(--accent-color);
+                     transform: translateY(-1px);
                 }
 
-                .url-container {
-                    margin-top: auto;
-                    padding-top: 20px;
-                    border-top: 1px solid rgba(255, 255, 255, 0.1);
-                    display: flex;
-                    justify-content: center;
-                }
+                 .url-container {
+                     margin-top: auto; /* Push to bottom */
+                     padding-top: 20px; /* Space above button */
+                     border-top: 1px solid var(--border-color);
+                     text-align: center; /* Center button */
+                 }
 
                 .url-button {
                     display: inline-flex;
                     align-items: center;
+                    justify-content: center;
                     gap: 10px;
                     background-color: var(--accent-color);
-                    color: white;
-                    padding: 12px 25px;
-                    border-radius: 25px;
+                    color: #ffffff;
+                    padding: 12px 30px; /* More padding */
+                    border-radius: var(--button-border-radius);
                     text-decoration: none;
-                    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-                    font-size: 1em;
-                    width: auto;
-                    min-width: 220px;
-                    justify-content: center;
-                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-                    font-weight: 500;
+                    transition: all var(--transition-speed) ease;
+                    font-size: 0.95em;
+                    font-weight: 600;
                     letter-spacing: 0.02em;
+                    border: none;
+                    box-shadow: 0 4px 10px color-mix(in srgb, var(--shadow-color) 50%, transparent);
                 }
 
                 .url-button:hover {
-                    background-color: #2980b9;
+                    background-color: var(--accent-hover);
                     transform: translateY(-3px);
-                    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+                    box-shadow: 0 6px 15px color-mix(in srgb, var(--shadow-color) 70%, transparent);
                 }
+                 .url-button .emoji {
+                     font-size: 1.2em;
+                 }
 
-                .favorite-indicator {
-                    position: absolute;
-                    top: 20px;
-                    right: 20px;
-                    font-size: 1.8em;
-                    color: var(--favorite-color);
-                    opacity: 0.6;
-                    transition: all 0.4s ease;
-                    z-index: 1;
-                    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-                    transform-origin: center;
-                }
+                 .favorite-indicator {
+                     position: absolute;
+                     top: 15px; /* Adjust position */
+                     right: 20px;
+                     font-size: 1.8em;
+                     color: var(--favorite-color);
+                     opacity: 0; /* Hidden by default */
+                     transition: all var(--transition-speed) ease;
+                     z-index: 1;
+                     text-shadow: 0 1px 3px var(--shadow-color);
+                     transform: scale(0.8);
+                 }
 
-                .article.is-favorite .favorite-indicator {
-                    opacity: 1;
-                    animation: pulse 2.5s infinite;
-                }
+                 .article.is-favorite .favorite-indicator {
+                     opacity: 0.8; /* Slightly transparent */
+                     transform: scale(1);
+                     animation: pulse 2.5s infinite ease-in-out;
+                 }
+                 .article:hover .favorite-indicator { /* Show on hover too if favorite */
+                      opacity: 1;
+                 }
+
 
                 @keyframes pulse {
-                    0% { transform: scale(1); }
-                    50% { transform: scale(1.15); }
-                    100% { transform: scale(1); }
+                    0% { transform: scale(1); opacity: 0.8; }
+                    50% { transform: scale(1.15); opacity: 1; }
+                    100% { transform: scale(1); opacity: 0.8; }
                 }
 
-                @media (max-width: 768px) {
-                    .articles-grid {
-                        grid-template-columns: 1fr;
-                        gap: 25px;
-                        padding: 15px;
-                    }
-                    
-                    .article {
-                        padding: 20px;
-                    }
-                    
-                    .title {
-                        font-size: 1.3em;
-                        padding: 12px;
-                    }
-                    
-                    .metadata {
-                        padding: 12px;
-                        gap: 12px;
-                    }
-                    
-                    .url-button {
-                        width: 100%;
-                        padding: 10px 20px;
-                    }
-                }
+                 /* --- Loading & No Results --- */
+                 .status-message {
+                     text-align: center;
+                     padding: 60px 20px;
+                     color: var(--text-secondary);
+                     font-size: 1.2em;
+                     font-weight: 500;
+                     display: none; /* Hide by default */
+                 }
+                 .status-message.active { display: block; }
 
-                .loading {
-                    display: none;
-                    justify-content: center;
-                    align-items: center;
-                    margin: 20px 0;
-                }
-
-                .loading.active {
-                    display: flex;
-                }
-
-                .loading-spinner {
-                    width: 40px;
-                    height: 40px;
-                    border: 4px solid var(--accent-color);
-                    border-top: 4px solid transparent;
-                    border-radius: 50%;
-                    animation: spin 1s linear infinite;
-                }
+                 .loading-spinner {
+                     width: 40px;
+                     height: 40px;
+                     border: 4px solid var(--border-color);
+                     border-top-color: var(--accent-color); /* Only top colored */
+                     border-radius: 50%;
+                     animation: spin 1s linear infinite;
+                     margin: 20px auto; /* Center spinner */
+                 }
 
                 @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
+                    to { transform: rotate(360deg); }
                 }
 
-                .no-results {
-                    text-align: center;
-                    padding: 40px;
-                    color: var(--text-secondary);
-                    font-size: 1.2em;
-                    display: none;
+                /* --- Responsive Adjustments --- */
+                @media (max-width: 768px) {
+                    .container { padding: 0 15px; }
+                    .header { padding: 15px 0; }
+                    .header.scrolled { padding: 8px 0; }
+
+                    .controls-container {
+                        flex-direction: column; /* Stack controls */
+                        align-items: stretch; /* Stretch controls full width */
+                    }
+                    .search-container { max-width: none; }
+                    .theme-toggle {
+                        position: absolute; /* Position top right */
+                        top: 15px;
+                        right: 15px;
+                    }
+                    .header.scrolled .theme-toggle { top: 8px; right: 15px; }
+
+
+                    .category-filters { justify-content: flex-start; } /* Ensure scroll starts left */
+
+                    .articles-grid {
+                        grid-template-columns: 1fr; /* Single column */
+                        gap: 25px;
+                        padding: 30px 0;
+                    }
+
+                    .article { padding: 25px; }
+                    .title { font-size: 1.2em; }
+                    .metadata { font-size: 0.8em; }
+                    .url-button { padding: 10px 25px; font-size: 0.9em; }
                 }
+
+                 @media (max-width: 480px) {
+                     .header h1 { font-size: 1.5em; }
+                     .datetime { font-size: 0.8em; }
+                     .search-box { padding: 10px 15px; font-size: 0.9em; }
+                     .category-filter { padding: 6px 14px; font-size: 0.85em; }
+                     .article { padding: 20px; }
+                     .title { font-size: 1.1em; }
+                 }
                 ");
                 htmlBuilder.AppendLine("</style>");
-                htmlBuilder.AppendLine("</head><body data-theme='dark'>"); // Default to dark theme
+                htmlBuilder.AppendLine("</head>");
+                htmlBuilder.AppendLine("<body data-theme='dark'>"); // Default theme
                 htmlBuilder.AppendLine("<div class='container'>");
 
-                 // --- Page Header ---
-                htmlBuilder.AppendLine("<header class='header'>"); // Use semantic header
-                htmlBuilder.AppendLine("<div class='collapsible-content'>");
-                htmlBuilder.AppendLine($"<h1>📰 Новини от Mediapool</h1>");
-                htmlBuilder.AppendLine($"<div class='datetime'>Извлечено на: {DateTime.Now:dd MMMM yyyy HH:mm:ss}</div>");
-                htmlBuilder.AppendLine("</div>"); // end collapsible-content
+                // --- Page Header ---
+                htmlBuilder.AppendLine("<header class='header'>");
+                htmlBuilder.AppendLine("<div class='header-content'>"); // Inner container for content alignment
 
                 // --- Controls ---
-                htmlBuilder.AppendLine("<div class='controls'>");
+                htmlBuilder.AppendLine("<div class='controls-container'>");
                 htmlBuilder.AppendLine("<div class='search-container'>");
-                htmlBuilder.AppendLine("<input type='text' id='search' class='search-box' placeholder='Търсене на новини...'>");
-                htmlBuilder.AppendLine("</div>"); // end search-container
-                 // Theme toggle should ideally be outside collapsible part if header shrinks
-                htmlBuilder.AppendLine("<button id='theme-toggle' class='theme-toggle' aria-label='Switch theme'>🌙</button>"); // Use icon/aria-label
-
-                htmlBuilder.AppendLine("</div>"); // end controls
+                htmlBuilder.AppendLine("<input type='text' id='search' class='search-box' placeholder='Търсене в заглавия...' aria-label='Search news titles'>");
+                htmlBuilder.AppendLine("</div>");
+                htmlBuilder.AppendLine("<button id='theme-toggle' class='theme-toggle' aria-label='Switch to light theme'>☀️</button>"); // Initial icon for dark->light
+                htmlBuilder.AppendLine("</div>"); // end controls-container
 
                 // --- Category Filters ---
-                htmlBuilder.AppendLine("<div class='category-filters collapsible-content'>"); // Wrap filters too
+                htmlBuilder.AppendLine("<div class='category-filters-container'>"); // Wrapper for scrolling
+                htmlBuilder.AppendLine("<div class='category-filters'>");
                 htmlBuilder.AppendLine("<button class='category-filter active' data-category='all'>Всички</button>");
                 var uniqueCategories = articles.Select(a => a.Category).Distinct().OrderBy(c => c);
                 foreach (var category in uniqueCategories)
                 {
-                    var emoji = articles.First(a => a.Category == category).CategoryEmoji;
-                    // Use HtmlEncode for category name in data attribute just in case
+                    // Find first article of this category to get the emoji
+                    var emoji = articles.FirstOrDefault(a => a.Category == category)?.CategoryEmoji ?? "❓";
+                    // Use HtmlEncode for category name in data attribute and display
                     htmlBuilder.AppendLine($"<button class='category-filter' data-category='{HttpUtility.HtmlEncode(category)}'>{emoji} {HttpUtility.HtmlEncode(category)}</button>");
                 }
                 htmlBuilder.AppendLine("</div>"); // end category-filters
+                htmlBuilder.AppendLine("<button class='category-expand-btn' aria-label='Show more categories'>→</button>");
+                htmlBuilder.AppendLine("</div>"); // end category-filters-container
+
+                htmlBuilder.AppendLine("</div>"); // end header-content
                 htmlBuilder.AppendLine("</header>"); // end header
 
-                 // --- Loading/No Results ---
-                htmlBuilder.AppendLine("<div class='loading'><div class='loading-spinner'></div></div>");
-                htmlBuilder.AppendLine("<div class='no-results'>Няма намерени новини, отговарящи на критериите.</div>");
+                // --- Loading/No Results ---
+                // Combine loading and no-results into one status area
+                htmlBuilder.AppendLine("<div id='status-message' class='status-message'>");
+                htmlBuilder.AppendLine("  <div id='loading-indicator' style='display: none;'><div class='loading-spinner'></div>Зареждане...</div>");
+                htmlBuilder.AppendLine("  <div id='no-results-message' style='display: none;'>Няма намерени новини, отговарящи на критериите.</div>");
+                htmlBuilder.AppendLine("</div>");
+
 
                 // --- Articles Grid ---
-                htmlBuilder.AppendLine("<main id='articles-grid' class='articles-grid'>"); // Use semantic main
+                htmlBuilder.AppendLine("<main id='articles-grid' class='articles-grid'>");
 
-                foreach (var article in articles.OrderByDescending(a => a.RawDateTime)) // Order here if needed
+                if (!articles.Any())
                 {
-                    string favoriteClass = article.IsFavorite ? "is-favorite" : "";
-                    // Use HtmlEncode for category in data attribute
-                    htmlBuilder.AppendLine($"<article class='article {favoriteClass}' data-category='{HttpUtility.HtmlEncode(article.Category)}' data-title='{HttpUtility.HtmlEncode(article.Title.ToLowerInvariant())}'>"); // Add data-title for easier JS filtering
-
-                    // Favorite indicator
-                    htmlBuilder.AppendLine("<div class='favorite-indicator' aria-hidden='true'>★</div>"); // Hide from screen readers
-
-                    // Title
-                    htmlBuilder.AppendLine($"<h2 class='title'><span class='emoji' aria-hidden='true'>{article.CategoryEmoji}</span> {HttpUtility.HtmlEncode(article.Title)}</h2>"); // Use H2 for article titles
-
-                    // Metadata
-                    htmlBuilder.AppendLine("<div class='metadata'>");
-                    htmlBuilder.AppendLine($"<div class='metadata-item'><span class='emoji' aria-hidden='true'>📅</span> {article.FormattedDate} {article.FormattedTime}</div>"); // Combine Date/Time
-                    htmlBuilder.AppendLine($"<div class='metadata-item'><span class='emoji' aria-hidden='true'>📌</span> {HttpUtility.HtmlEncode(article.Category)}</div>");
-                    if (!string.IsNullOrEmpty(article.Author))
-                    {
-                        htmlBuilder.AppendLine($"<div class='metadata-item'><span class='emoji' aria-hidden='true'>✍️</span> {HttpUtility.HtmlEncode(article.Author)}</div>");
-                    }
-                     htmlBuilder.AppendLine($"<div class='metadata-item'><span class='emoji' aria-hidden='true'>📊</span> {article.WordCount} думи</div>"); // Show word count
-                    htmlBuilder.AppendLine("</div>"); // end metadata
-
-                    // URL button
-                    htmlBuilder.AppendLine("<div class='url-container'>");
-                    // Added rel="noopener noreferrer" for security when using target="_blank"
-                    htmlBuilder.AppendLine($"<a href='{article.Url}' target='_blank' rel='noopener noreferrer' class='url-button'><span class='emoji' aria-hidden='true'>🔗</span> Прочети повече</a>");
-                    htmlBuilder.AppendLine("</div>"); // end url-container
-
-                    htmlBuilder.AppendLine("</article>"); // end article
+                    // Handled by JS now, but could add a server-side message if needed
                 }
+                else
+                {
+                    foreach (var article in articles) // Already sorted
+                    {
+                        string favoriteClass = article.IsFavorite ? "is-favorite" : "";
+                        // Use HtmlEncode for category/title in data attributes
+                        htmlBuilder.AppendLine($"<article class='article {favoriteClass}' data-category='{HttpUtility.HtmlEncode(article.Category)}' data-title='{HttpUtility.HtmlEncode(article.Title.ToLowerInvariant())}'>");
 
-                htmlBuilder.AppendLine("</main>"); // end articles-grid
+                        htmlBuilder.AppendLine("<div class='favorite-indicator' aria-hidden='true'>★</div>");
+
+                        htmlBuilder.AppendLine($"<h2 class='title'><span class='emoji' aria-hidden='true'>{article.CategoryEmoji}</span> {HttpUtility.HtmlEncode(article.Title)}</h2>");
+
+                        htmlBuilder.AppendLine("<div class='metadata'>");
+                        htmlBuilder.AppendLine($"<div class='metadata-item'><span class='emoji' aria-hidden='true'>📅</span> {article.FormattedDate} {article.FormattedTime}</div>");
+                        htmlBuilder.AppendLine($"<div class='metadata-item'><span class='emoji' aria-hidden='true'>📌</span> {HttpUtility.HtmlEncode(article.Category)}</div>");
+                        if (!string.IsNullOrEmpty(article.Author))
+                        {
+                            htmlBuilder.AppendLine($"<div class='metadata-item'><span class='emoji' aria-hidden='true'>✍️</span> {HttpUtility.HtmlEncode(article.Author)}</div>");
+                        }
+                        htmlBuilder.AppendLine($"<div class='metadata-item'><span class='emoji' aria-hidden='true'>📊</span> {article.WordCount} думи</div>");
+                        htmlBuilder.AppendLine("</div>"); // end metadata
+
+                        htmlBuilder.AppendLine("<div class='url-container'>");
+                        htmlBuilder.AppendLine($"<a href='{article.Url}' target='_blank' rel='noopener noreferrer' class='url-button'><span class='emoji' aria-hidden='true'>🔗</span> Прочети повече</a>");
+                        htmlBuilder.AppendLine("</div>");
+
+                        htmlBuilder.AppendLine("</article>");
+                    }
+                }
+                htmlBuilder.AppendLine("</main>");
                 htmlBuilder.AppendLine("</div>"); // end container
 
                 // --- JavaScript ---
                 htmlBuilder.AppendLine("<script>");
-                // (Your existing JS goes here - Use @"" string literal)
-                 htmlBuilder.AppendLine(@"
+                // --- Enhanced JavaScript ---
+                htmlBuilder.AppendLine(@"
                     document.addEventListener('DOMContentLoaded', function() {
                         const header = document.querySelector('.header');
                         const themeToggle = document.getElementById('theme-toggle');
                         const root = document.documentElement;
                         const searchBox = document.getElementById('search');
                         const articlesContainer = document.getElementById('articles-grid');
-                        const articles = articlesContainer.querySelectorAll('.article'); // Select only articles
-                        const noResults = document.querySelector('.no-results');
-                        const categoryFiltersContainer = document.querySelector('.category-filters');
+                        const articles = Array.from(articlesContainer.querySelectorAll('.article'));
+                        const statusMessageContainer = document.getElementById('status-message');
+                        const loadingIndicator = document.getElementById('loading-indicator');
+                        const noResultsMessage = document.getElementById('no-results-message');
+                        const categoryFiltersContainer = document.querySelector('.category-filters-container');
+                        const categoryFilters = categoryFiltersContainer.querySelector('.category-filters');
+                        const expandButton = document.querySelector('.category-expand-btn');
                         let activeCategory = 'all';
-                        let lastScrollTop = 0;
+                        let searchTimeout;
+                        let isFiltering = false;
+                        let lastScrollY = window.scrollY;
+                        let isExpanded = false;
 
-                        // Initial theme setup based on preference/storage
-                        const savedTheme = localStorage.getItem('theme') || 'dark'; // Default to dark
-                        root.setAttribute('data-theme', savedTheme);
-                        themeToggle.textContent = savedTheme === 'light' ? '🌙' : '☀️'; // Update button icon
-                        themeToggle.setAttribute('aria-label', `Switch to ${savedTheme === 'light' ? 'dark' : 'light'} theme`);
+                        // --- Header Scroll Hide/Show ---
+                        function handleScroll() {
+                            const currentScrollY = window.scrollY;
+                            const scrollingDown = currentScrollY > lastScrollY;
+                            const scrollOffset = 100; // Minimum scroll before hiding
 
-
-                        // Header scroll behavior
-                        window.addEventListener('scroll', () => {
-                           const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                            if (scrollTop > 100) { // Threshold to shrink header
-                                header.classList.add('scrolled');
+                            if (scrollingDown && currentScrollY > scrollOffset) {
+                                header.classList.add('hidden');
                             } else {
-                                header.classList.remove('scrolled');
+                                header.classList.remove('hidden');
                             }
-                           lastScrollTop = scrollTop <= 0 ? 0 : scrollTop; // For Mobile or negative scrolling
-                        }, { passive: true }); // Improve scroll performance
 
-                        // Theme toggle
+                            lastScrollY = currentScrollY;
+                        }
+
+                        window.addEventListener('scroll', handleScroll, { passive: true });
+
+                        // --- Category Expansion ---
+                        function checkCategoryOverflow() {
+                            if (!categoryFilters || !categoryFiltersContainer) return;
+                            
+                            const filtersWidth = categoryFilters.scrollWidth;
+                            const containerWidth = categoryFiltersContainer.clientWidth;
+                            
+                            if (filtersWidth > containerWidth && !isExpanded) {
+                                expandButton.style.display = 'block';
+                            } else {
+                                expandButton.style.display = isExpanded ? 'block' : 'none';
+                            }
+                        }
+
+                        if (expandButton) {
+                            expandButton.addEventListener('click', () => {
+                                isExpanded = !isExpanded;
+                                categoryFilters.classList.toggle('expanded');
+                                expandButton.textContent = isExpanded ? '↑' : '→';
+                                expandButton.setAttribute('aria-label', 
+                                    isExpanded ? 'Show less categories' : 'Show more categories'
+                                );
+                                checkCategoryOverflow(); // Recheck after expanding
+                            });
+
+                            // Check overflow on load and resize
+                            window.addEventListener('resize', checkCategoryOverflow);
+                            // Initial check after a small delay to ensure proper layout
+                            setTimeout(checkCategoryOverflow, 100);
+                        }
+
+                        // --- Initial Setup ---
+                        function setupInitialTheme() {
+                            const savedTheme = localStorage.getItem('theme') || 'dark'; // Default dark
+                            root.setAttribute('data-theme', savedTheme);
+                            updateThemeButton(savedTheme);
+                        }
+
+                        function updateThemeButton(theme) {
+                             if (theme === 'light') {
+                                 themeToggle.textContent = '🌙'; // Show moon icon in light mode
+                                 themeToggle.setAttribute('aria-label', 'Switch to dark theme');
+                             } else {
+                                 themeToggle.textContent = '☀️'; // Show sun icon in dark mode
+                                 themeToggle.setAttribute('aria-label', 'Switch to light theme');
+                             }
+                        }
+
+                        setupInitialTheme(); // Set theme on load
+
+                        // --- Theme Toggle ---
                         themeToggle.addEventListener('click', () => {
                             const currentTheme = root.getAttribute('data-theme');
                             const newTheme = currentTheme === 'light' ? 'dark' : 'light';
                             root.setAttribute('data-theme', newTheme);
-                            themeToggle.textContent = newTheme === 'light' ? '🌙' : '☀️'; // Update icon
-                            themeToggle.setAttribute('aria-label', `Switch to ${newTheme === 'light' ? 'dark' : 'light'} theme`);
+                            updateThemeButton(newTheme);
                             localStorage.setItem('theme', newTheme); // Persist preference
                         });
 
-                        // Search functionality (Debounced for performance)
-                         let searchTimeout;
+
+                         // --- Search Functionality (Debounced) ---
                          searchBox.addEventListener('input', () => {
                              clearTimeout(searchTimeout);
-                             searchTimeout = setTimeout(filterArticles, 250); // Debounce input
+                             // Only filter if not already filtering
+                             if (!isFiltering) {
+                                 searchTimeout = setTimeout(filterArticles, 300); // Debounce input slightly longer
+                             }
                          });
 
 
-                        // Category filters (Event Delegation)
-                        categoryFiltersContainer.addEventListener('click', (event) => {
-                            if (event.target.classList.contains('category-filter')) {
-                                categoryFiltersContainer.querySelector('.active')?.classList.remove('active');
-                                event.target.classList.add('active');
-                                activeCategory = event.target.dataset.category || 'all';
-                                filterArticles();
-                            }
-                        });
+                         // --- Category Filters (Event Delegation) ---
+                         categoryFiltersContainer.addEventListener('click', (event) => {
+                             const target = event.target;
+                             if (target.classList.contains('category-filter') && !target.classList.contains('active')) {
+                                 categoryFiltersContainer.querySelector('.active')?.classList.remove('active');
+                                 target.classList.add('active');
+                                 activeCategory = target.dataset.category || 'all';
+                                 // Only filter if not already filtering
+                                 if (!isFiltering) {
+                                     filterArticles();
+                                 }
+                             }
+                         });
 
-                        function filterArticles() {
+
+                         // --- Core Filtering Logic ---
+                         function filterArticles() {
+                             if (isFiltering) return; // Prevent overlap
+                             isFiltering = true;
+
+                             // Show loading indicator (optional, might be too fast to notice)
+                             // statusMessageContainer.classList.add('active');
+                             // loadingIndicator.style.display = 'block';
+                             // noResultsMessage.style.display = 'none';
+                             // articlesContainer.style.opacity = '0.5'; // Dim container during filter
+
                              const searchTerm = searchBox.value.toLowerCase().trim();
                              let visibleCount = 0;
 
-                             articles.forEach(article => {
-                                 const title = article.dataset.title || ''; // Use data-title
-                                 const category = article.dataset.category || '';
-                                 const matchesSearch = searchTerm === '' || title.includes(searchTerm);
-                                 const matchesCategory = activeCategory === 'all' || category === activeCategory;
+                             // Use requestAnimationFrame for smoother visual updates
+                             requestAnimationFrame(() => {
+                                 articles.forEach(article => {
+                                     const title = article.dataset.title || '';
+                                     const category = article.dataset.category || '';
+                                     const matchesSearch = searchTerm === '' || title.includes(searchTerm);
+                                     const matchesCategory = activeCategory === 'all' || category === activeCategory;
 
-                                 if (matchesSearch && matchesCategory) {
-                                     article.style.display = ''; // Show using CSS grid rules
-                                     visibleCount++;
+                                     if (matchesSearch && matchesCategory) {
+                                         // Use 'grid' or 'flex' depending on your display setup, '' resets to stylesheet default
+                                         article.style.display = '';
+                                         visibleCount++;
+                                     } else {
+                                         article.style.display = 'none';
+                                     }
+                                 });
+
+                                 // Update status message visibility
+                                 if (visibleCount === 0) {
+                                     statusMessageContainer.classList.add('active');
+                                     noResultsMessage.style.display = 'block';
+                                     loadingIndicator.style.display = 'none'; // Hide loader if no results
                                  } else {
-                                     article.style.display = 'none'; // Hide
+                                     statusMessageContainer.classList.remove('active');
+                                     noResultsMessage.style.display = 'none';
+                                     loadingIndicator.style.display = 'none'; // Hide loader on success
                                  }
-                             });
 
-                             noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+                                 // Restore container opacity
+                                 // articlesContainer.style.opacity = '1';
+
+                                 isFiltering = false; // Allow next filter
+                            });
                          }
 
-                         // Initial filter call in case search box has value on load (e.g., back button)
-                         filterArticles();
+                         // Initial check in case page loaded with filters/search pre-filled
+                         // Also handles the case where there were 0 articles initially
+                         if (articles.length === 0) {
+                            statusMessageContainer.classList.add('active');
+                            noResultsMessage.style.display = 'block';
+                         } else {
+                             filterArticles(); // Run initial filter if articles exist
+                         }
                     });
                  ");
                 htmlBuilder.AppendLine("</script>");
@@ -890,41 +1136,39 @@ namespace Upr_2.Services
                 Logger.Log($"Successfully stored {articles.Count} articles to HTML report: {filePath}");
 
                 // --- Open File ---
-                 TryOpenFile(filePath);
+                TryOpenFile(filePath);
 
             }
             catch (IOException ex)
             {
                 Logger.LogError($"Error writing HTML report to {filePath}", ex);
-                // Optionally inform the user the report couldn't be saved
+                Console.WriteLine($"[!] Грешка при запис на HTML отчет: {ex.Message}"); // User feedback
             }
             catch (Exception ex)
             {
                 Logger.LogError("Unexpected error generating HTML report", ex);
-                 // Optionally inform the user
+                Console.WriteLine($"[!] Неочаквана грешка при генериране на HTML отчет: {ex.Message}"); // User feedback
             }
         }
 
         private void TryOpenFile(string filePath)
         {
-             try
-             {
-                 // UseShellExecute is required to open files with default application
-                 var processStartInfo = new ProcessStartInfo(filePath)
-                 {
-                     UseShellExecute = true
-                 };
-                 Process.Start(processStartInfo);
-                 Logger.Log($"Attempted to open HTML report in default browser: {filePath}");
-             }
-             catch (Exception ex)
-             {
-                 Logger.LogError($"Error opening HTML report '{filePath}' in browser.", ex);
-                 Console.WriteLine($"Could not automatically open the report file.");
-                 Console.WriteLine($"You can find it at: {filePath}");
-             }
+            try
+            {
+                var processStartInfo = new ProcessStartInfo(filePath)
+                {
+                    UseShellExecute = true
+                };
+                Process.Start(processStartInfo);
+                Logger.Log($"Attempted to open HTML report in default browser: {filePath}");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error opening HTML report '{filePath}' in browser.", ex);
+                // Provide user feedback in the console
+                Console.WriteLine($"[!] Не можа автоматично да се отвори HTML отчета.");
+                Console.WriteLine($"    Можете да го намерите тук: {filePath}");
+            }
         }
-
-        // Removed NewsArticleComparer as NewsArticle now overrides Equals/GetHashCode
     }
 }
